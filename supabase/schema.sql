@@ -193,3 +193,8 @@ end $$;
 
 revoke all on function public.fzth_msg_list(integer, text), public.fzth_msg_post(integer, text, text, text, text) from public;
 grant execute on function public.fzth_msg_list(integer, text), public.fzth_msg_post(integer, text, text, text, text) to anon;
+
+-- Supabase donne par défaut l'exécution des fonctions de « public » aux rôles anon / authenticated :
+-- on retire explicitement ce qui ne doit pas être appelé directement.
+revoke execute on function public.fzth_check(integer, text), public.fzth_hash(integer, text) from anon, authenticated;
+alter function public.fzth_hash(integer, text) set search_path = public, pg_catalog;
