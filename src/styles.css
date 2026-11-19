@@ -145,3 +145,15 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
 .choices h3 { font-size: 14px; color: var(--gold); margin-right: 6px; }
 .choices label { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 .choices select { font: inherit; font-size: 13px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--world-border); background: var(--bg); color: var(--text); }
+
+/* Équipe : illustrations de l'ancien site */
+.avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; vertical-align: middle; border: 1px solid var(--world-border); }
+.team { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.portrait { position: relative; height: 230px; padding: 0; overflow: hidden; border-radius: 12px; background: #0004; }
+.portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; transition: transform .4s, filter .3s; filter: saturate(.8) brightness(.8); }
+.portrait:hover img, .portrait.on img { transform: scale(1.04); filter: none; }
+.portrait.on { border: 2px solid var(--world-accent); box-shadow: 0 0 18px var(--world-glow); }
+.portrait-info { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 10px 8px; background: linear-gradient(transparent, #0e0d13ee 60%); display: flex; flex-direction: column; align-items: center; }
+.portrait-info strong { font: 20px Georgia, serif; color: #fff; }
+.portrait-info small { color: var(--muted); font-size: 12px; }
+@media (max-width: 900px) { .portrait { height: 140px; } .grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } .egg img { width: 56px; height: 56px; } .portrait-info strong { font-size: 16px; } }

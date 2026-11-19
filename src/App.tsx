@@ -31,7 +31,7 @@ export function App() {
         <nav className="profiles">
           {profiles.map(p => (
             <button key={p.id} className={p.id === profile.id ? 'on' : ''} data-world={p.world} onClick={() => setProfileId(p.id)}>
-              {p.symbol} {p.name} <small>{p.classe}</small>
+              <img className="avatar" src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" /> {p.name} <small>{p.classe}</small>
             </button>
           ))}
         </nav>
@@ -40,7 +40,7 @@ export function App() {
 
       {info
         ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
-        : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
+        : <Home profileId={profile.id} isDone={isDone} onOpen={setView} onPick={setProfileId} />}
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} status={status} />}
     </div>
@@ -49,9 +49,22 @@ export function App() {
 
 const img = (file: string | null) => (file ? `${import.meta.env.BASE_URL}dofus/${file}` : undefined);
 
-function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
+function Home({ profileId, isDone, onOpen, onPick }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void; onPick: (id: number) => void }) {
+  const stats = (pid: number) => {
+    let done = 0;
+    for (const raw of catalog) { const v = viewFor(raw, pid, isDone); if (v.itemIds.length && v.itemIds.every(id => isDone(pid, id))) done++; }
+    return done;
+  };
   return (
     <main className="home panel">
+      <section className="team">
+        {profiles.map(p => (
+          <button key={p.id} className={`portrait${p.id === profileId ? ' on' : ''}`} data-world={p.world} onClick={() => onPick(p.id)}>
+            <img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt={`Illustration de ${p.name}`} />
+            <span className="portrait-info"><strong>{p.name}</strong><small>{p.classe} · {stats(p.id)}/{catalog.length} Dofus</small></span>
+          </button>
+        ))}
+      </section>
       <h2>Tous les Dofus</h2>
       <div className="grid">
         {dofusInfo.map(d => {
