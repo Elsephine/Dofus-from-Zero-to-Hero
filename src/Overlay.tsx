@@ -196,6 +196,7 @@ export async function openOverlay(profileId: number, dofusId?: string) {
       }
     }
     w.document.body.dataset.world = document.body.dataset.world;
+    w.document.body.dataset.theme = document.body.dataset.theme;
     w.document.body.classList.add('pip');
     const el = w.document.createElement('div'); w.document.body.appendChild(el);
     const root = createRoot(el); root.render(<OverlayView profileId={profileId} />);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
-import { getHistory, hasCode, isUnlocked, login, logout, toggle, undo, useProgress, type SyncStatus } from './model/progress';
+import { getHistory, hasCode, isUnlocked, login, logout, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
 import { labelOf, search } from './model/search';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
@@ -87,7 +87,7 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="top">
+      <header className="top" style={{ '--hero': `url(${import.meta.env.BASE_URL}persos/${profile.image})` } as React.CSSProperties}>
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
           <button className={!['tools', 'jobs', 'almanax', 'team', 'messages'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
@@ -100,6 +100,7 @@ export function App() {
         <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
         <OnlineNow profileId={profile.id} />
         <Clock />
+        <ThemeToggle />
         <Journal profileId={profile.id} />
         <Bell onOpenTools={() => setView('tools')} />
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
@@ -152,6 +153,44 @@ function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: 
 
 const img = (file: string | null) => (file ? `${import.meta.env.BASE_URL}dofus/${file}` : undefined);
 
+/** Bouton clair / sombre (retenu sur l'appareil). */
+function ThemeToggle() {
+  const [theme, setTheme] = useState(() => document.body.dataset.theme ?? 'light');
+  const flip = () => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); document.body.dataset.theme = t; try { localStorage.setItem('fzth:v2:theme', t); } catch { /* ignore */ } };
+  return <button className="theme-toggle" onClick={flip} title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}>{theme === 'dark' ? '☀' : '🌙'}</button>;
+}
+
+/** Les 3 personnages côte à côte avec leur avancée (Dofus terminés et quêtes validées). */
+function TeamStrip({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
+  const { team } = teamInfo();
+  return (
+    <div className="team-strip">
+      {profiles.map(p => {
+        const known = p.id === profileId || team[p.id];
+        let total = 0, done = 0, eggs = 0;
+        if (known) for (const raw of catalog) {
+          const v = viewFor(raw, p.id, isDone); const n = v.itemIds.filter(id => isDone(p.id, id)).length;
+          total += v.itemIds.length; done += n; if (v.itemIds.length && n === v.itemIds.length) eggs++;
+        }
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        return (
+          <div key={p.id} className={`ts-card${p.id === profileId ? ' me' : ''}`} data-world={p.world}>
+            <img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" />
+            <div className="ts-info">
+              <strong>{p.name}</strong>
+              <small>{p.classe}</small>
+              {known ? <>
+                <span className="ts-eggs">🥚 {eggs} Dofus · {pct} %</span>
+                <span className="ts-bar"><i style={{ width: `${pct}%` }} /></span>
+              </> : <small className="ts-hidden">Progression pas encore partagée</small>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
   const [filter, setFilter] = remember<'all' | 'doing' | 'todo' | 'done'>('fzth:v2:homeFilter', 'all');
   const stats = dofusInfo.map(d => {
@@ -166,6 +205,7 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
   const FILTERS: [typeof filter, string][] = [['all', 'Tous'], ['doing', 'En cours'], ['todo', 'Pas commencés'], ['done', 'Terminés']];
   return (
     <main className="home panel">
+      <TeamStrip profileId={profileId} isDone={isDone} />
       <div className="home-head">
         <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
         <div className="row">{FILTERS.map(([k, l]) => <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l} <small>{k === 'all' ? stats.length : stats.filter(x => x.state === k).length}</small></button>)}</div>
@@ -173,7 +213,7 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
       <div className="grid">
         {stats.filter(x => filter === 'all' || x.state === filter).map(({ d, c, pct, next }) => {
           return (
-            <button key={d.id} className={`egg${c ? '' : ' soon'}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={next ? `${d.name}\nProchaine : ${next.name}` : d.name}>
+            <button key={d.id} className={`egg st-${pct === 100 ? 'done' : pct > 0 ? 'doing' : 'todo'}${c ? '' : ' soon'}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={next ? `${d.name}\nProchaine : ${next.name}` : d.name}>
               {d.image && <img src={img(d.image)} alt="" loading="lazy" />}
               <span className="name">{d.name}</span>
               {c ? <span className="ring"><span style={{ width: `${pct}%` }} /></span> : <span className="chip">bientôt</span>}
@@ -516,7 +556,7 @@ function SyncBadge({ status, lastSync, pending }: { status: SyncStatus; lastSync
     ok: `Sauvegardé${lastSync ? ' ' + lastSync.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}`,
     offline: `Hors ligne${pending ? ` — ${pending} en attente` : ''}`, badcode: 'Code refusé — reconnecte-toi',
   };
-  return <span className={`sync ${status}`}>● {txt[status]}</span>;
+  return <span className={`sync ${status}`} title={txt[status]}>●<span className="sync-txt"> {txt[status]}</span></span>;
 }
 
 export function QuestRow({ item, done, grouped, onToggle }: { item: ItemView; done: boolean; grouped?: boolean; onToggle: () => void }) {
