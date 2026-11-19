@@ -1114,3 +1114,17 @@ body:not([data-theme="dark"]) .rc-name small { color: var(--ok); }
 }
 .path-node span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @media (max-width: 900px) { .dp-quests .quest .line { flex-wrap: wrap; } .dp-quests .quest .chips { flex-basis: 100%; justify-content: flex-start; padding-left: 30px; } }
+
+/* Overlay : avancée des coéquipiers */
+.ov-mate-prog { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.ov-mate-prog img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; }
+.ov-mate-prog b { color: var(--text); font-weight: 600; }
+.ov-mate-prog em { font-style: normal; font-weight: 700; padding: 0 4px; border-radius: 6px; }
+.ov-mate-prog em.ahead { color: #fff; background: #d9822b; } .ov-mate-prog em.behind { color: #fff; background: var(--ok); }
+.ov-mates { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
+.ov-mates img { width: 18px; height: 18px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; }
+.ov-mates img.ok { box-shadow: 0 0 0 2px var(--ok2); }
+.ov-mates img.no { filter: grayscale(1); opacity: .35; }
+.ov-next-main .ov-mates img { width: 22px; height: 22px; }
+.ov-behind { flex: none; font-size: 12px; padding: 6px 10px; border-radius: 10px; border-color: #d9822b; color: var(--text); background: rgb(217 130 43 / .14); text-align: left; }
+.ov-behind.on { background: #d9822b; color: #fff; }

@@ -100,7 +100,13 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
   const v = viewFor(raw, profileId, isDone);
   const all = v.sections.flatMap(s => s.items.map(i => ({ ...i, section: s.title })));
   const done = v.itemIds.filter(id => isDone(profileId, id)).length;
-  const next = all.filter(i => !isDone(profileId, i.id)).slice(0, count);
+  // Coéquipiers qui partagent leur progression : on montre ce qu'ils ont déjà fait.
+  const { team } = teamInfo();
+  const mates = profiles.filter(p => p.id !== profileId && team[p.id]);
+  const [behindOnly, setBehindOnly] = useState(false);
+  const seen = new Set<string>();
+  const next = all.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return !isDone(profileId, i.id) && (!behindOnly || mates.some(m => isDone(m.id, i.id))); }).slice(0, count);
+  const behindCount = [...new Set(all.filter(i => !isDone(profileId, i.id) && mates.some(m => isDone(m.id, i.id))).map(i => i.id))].length;
   const last = [...all].reverse().find(i => isDone(profileId, i.id));
 
   const pct = v.itemIds.length ? Math.round((done / v.itemIds.length) * 100) : 0;
@@ -113,6 +119,9 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
     return { d, n, total: c.itemIds.length };
   }).sort((a, b) => Number(b.d.id === raw.id) - Number(a.d.id === raw.id) || Number(b.n > 0 && b.n < b.total) - Number(a.n > 0 && a.n < a.total));
   const [first, ...rest] = next;
+  const matesOf = (id: string) => mates.length > 0 && (
+    <span className="ov-mates">{mates.map(m => { const ok = isDone(m.id, id); return <img key={m.id} src={abs('persos/' + m.image)} alt={m.name} className={ok ? 'ok' : 'no'} title={`${m.name} : ${ok ? 'déjà faite ✓' : 'pas encore'}`} />; })}</span>
+  );
   const chipsOf = (i: (typeof next)[number]) => (
     <div className="ov-chips">
       {i.dungeon?.captureOcre && <span className="ov-chip ocre" title="Donjon à capturer pour le Dofus Ocre">◆ Ocre</span>}
@@ -137,6 +146,11 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
           <strong>{raw.name}</strong>
           <small>{done}/{v.itemIds.length} · {pct} %</small>
           <span className="ov-me"><img src={abs('persos/' + profile.image)} alt="" />{profile.name}<i className={`sync-dot ${status}`} /></span>
+          {mates.map(m => { const n = v.itemIds.filter(id => isDone(m.id, id)).length; const d = n - done; return (
+            <span key={m.id} className="ov-mate-prog" data-world={m.world} title={`${m.name} : ${n}/${v.itemIds.length} sur ce Dofus`}>
+              <img src={abs('persos/' + m.image)} alt="" />{m.name} <b>{Math.round((n / Math.max(1, v.itemIds.length)) * 100)} %</b>
+              {d !== 0 && <em className={d > 0 ? 'ahead' : 'behind'}>{d > 0 ? `+${d}` : d}</em>}
+            </span>); })}
         </div>
       </section>
       <nav className="ov-eggs">
@@ -147,6 +161,11 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
           </button>
         ))}
       </nav>
+      {mates.length > 0 && (behindCount > 0 || behindOnly) && (
+        <button className={`ov-behind${behindOnly ? ' on' : ''}`} onClick={() => setBehindOnly(!behindOnly)}>
+          {behindOnly ? '← Toutes les quêtes' : `👥 ${behindCount} quête${behindCount > 1 ? 's' : ''} déjà faite${behindCount > 1 ? 's' : ''} par l’équipe : les voir`}
+        </button>
+      )}
       {first ? (
         <article className="ov-next">
           <span className="ov-label">Prochaine quête · {first.section}</span>
@@ -154,15 +173,16 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
           <div className="ov-next-main">
             <button className="ov-check big" onClick={() => toggle(profileId, first.id, true)} title="Valider cette quête">✓</button>
             <span className="ov-name">{first.url ? <a href={first.url} target="_blank" rel="noreferrer">{first.name}</a> : first.name}</span>
+            {matesOf(first.id)}
           </div>
           {chipsOf(first)}
         </article>
-      ) : <p className="ov-done">🎉 Ce Dofus est terminé !</p>}
+      ) : <p className="ov-done">{behindOnly ? '✓ Plus aucun retard sur l’équipe ici !' : '🎉 Ce Dofus est terminé !'}</p>}
       <ul className="ov-list">
         {rest.map(i => (
           <li key={i.id}>
             <button className="ov-check" onClick={() => toggle(profileId, i.id, true)} title="Valider">✓</button>
-            <span className="ov-name">{i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.name}</a> : i.name}</span>
+            <span className="ov-name">{i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.name}</a> : i.name}{matesOf(i.id)}</span>
             {chipsOf(i)}
           </li>
         ))}
