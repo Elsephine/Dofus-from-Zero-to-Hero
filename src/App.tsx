@@ -20,6 +20,7 @@ import { watchGoals } from './model/goals';
 import { setPresencePage, watchTeamLive } from './model/teamlive';
 import { OnlineNow } from './TeamLive';
 import { Jobs } from './Jobs';
+import { CatchUp } from './CatchUp';
 import { Achievements, eventStatus } from './Achievements';
 import { almostDone, achKey, useAchData } from './model/achievements';
 import { dungeonFor } from './TeamLive';
@@ -276,6 +277,7 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
   return (
     <main className="home panel">
       <TeamStrip profileId={profileId} isDone={isDone} />
+      <CatchUp profileId={profileId} isDone={isDone} onOpenDofus={name => { const c = catalog.find(x => x.name === name); if (c) onOpen(c.id); }} />
       <NextActions profileId={profileId} isDone={isDone} onOpen={onOpen} />
       <div className="home-head">
         <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
