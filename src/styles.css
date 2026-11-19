@@ -563,3 +563,16 @@ body.pip { margin: 0; }
 [data-world="elio"] > i, i[data-world="elio"] { background: #ffb67b !important; }
 .legend .all i { background: var(--gold) !important; }
 .member.online .on-av i, .online-now .on-av i { background: #4ade80 !important; }
+
+/* Overlay : onglets et ressources */
+.ov-tabs { display: flex; gap: 4px; flex: 1; } .ov-tabs button { flex: 1; font-size: 12px; padding: 4px; } .ov-tabs button.on { border-color: var(--world-accent); color: var(--world-bright); }
+.overlay > .ov-tabs { flex: none; }
+.ov-res { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; overflow: auto; flex: 1; }
+.ov-res li { border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; background: #0003; display: flex; flex-direction: column; gap: 4px; }
+.ov-res li.mine { border-color: var(--world-accent); }
+.ov-res-head { display: flex; align-items: center; gap: 6px; } .ov-res-head strong { flex: 1; font-size: 13px; }
+.ov-res-ctrl { display: flex; align-items: center; gap: 4px; }
+.ov-res-ctrl input { width: 70px; font: inherit; font-size: 12px; padding: 2px 5px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); text-align: right; }
+.ov-res-ctrl button { padding: 1px 6px; font-size: 11px; }
+.ov-res-ctrl small { margin-left: auto; color: var(--muted); font-size: 11px; }
+.toggle.small { font-size: 11px; }
