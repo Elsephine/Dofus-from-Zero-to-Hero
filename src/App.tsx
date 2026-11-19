@@ -20,7 +20,7 @@ import { Jobs } from './Jobs';
 import { Almanax } from './Almanax';
 import { Team } from './Team';
 import { OverlayView, openOverlay } from './Overlay';
-import { dismissToast, enableBrowserNotifications, markAllSeen, pushToasts, useNotifications, watchNotifications } from './model/notifications';
+import { CATS, catOf, dismissCat, enableBrowserNotifications, isMuted, markAllSeen, pushToasts, setMuted, useNotifications, watchNotifications } from './model/notifications';
 import { picksFor, setPick, viewFor } from './model/choices';
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
@@ -49,7 +49,7 @@ export function App() {
   // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
   useEffect(() => { const off = onNewMessages(ms => {
     if (view === 'messages') return;
-    pushToasts(ms.map(m => ({ id: 'msg-' + m.id, kind: 'msg' as const, who: m.profile_id, at: m.created_at, text: `${profiles.find(p => p.id === m.profile_id)?.name} : ${m.body}` })));
+    pushToasts(ms.map(m => ({ id: 'msg-' + m.id, kind: 'msg' as const, cat: m.kind === 'done' ? 'news' as const : m.kind === 'text' ? 'chat' as const : 'trade' as const, who: m.profile_id, at: m.created_at, text: `${profiles.find(p => p.id === m.profile_id)?.name} : ${m.body}` })));
   }); return () => { off(); }; }, [view]);
   // Annonce automatique quand un Dofus vient d'être terminé.
   useEffect(() => {
@@ -449,13 +449,30 @@ function Journal({ profileId }: { profileId: number }) {
 function Bell({ onOpenTools }: { onOpenTools: () => void }) {
   const { unseen, permission } = useNotifications();
   const [open, setOpen] = useDropdown();
+  const [settings, setSettings] = useState(false);
   return (
     <div className="bell-wrap dd">
       <button className={`bell${unseen.length ? ' has' : ''}`} onClick={() => setOpen(!open)} title="Notifications de l’équipe">🔔{unseen.length > 0 && <span className="badge">{unseen.length}</span>}</button>
       {open && (
         <div className="bell-menu panel">
-          <h3>Notifications</h3>
-          {unseen.length ? unseen.map(n => n.url ? <a key={n.id} href={n.url} target="_blank" rel="noreferrer">🛡️ {n.text} ↗</a> : <span key={n.id} className="notif-res">📦 {n.text}</span>) : <p className="meta">Rien de nouveau.</p>}
+          <h3>Notifications <button className="bell-gear" onClick={() => setSettings(!settings)} title="Choisir les catégories">⚙</button></h3>
+          {settings && (
+            <div className="notif-settings">
+              <p className="meta small">Bulles à afficher (la cloche garde tout) :</p>
+              {CATS.map(c => (
+                <label key={c.id} className="toggle small"><input type="checkbox" checked={!isMuted(c.id)} onChange={e => setMuted(c.id, !e.target.checked)} /> {c.icon} {c.label}</label>
+              ))}
+            </div>
+          )}
+          {unseen.length ? CATS.map(c => {
+            const g = unseen.filter(n => catOf(n) === c.id); if (!g.length) return null;
+            return (
+              <details key={c.id} className="notif-group" open={g.length <= 3}>
+                <summary>{c.icon} {c.label} <span className="badge">{g.length}</span></summary>
+                {g.map(n => n.url ? <a key={n.id} href={n.url} target="_blank" rel="noreferrer">{n.text} ↗</a> : <span key={n.id} className="notif-res">{n.text}</span>)}
+              </details>
+            );
+          }) : <p className="meta">Rien de nouveau.</p>}
           <div className="row">
             {unseen.length > 0 && <button onClick={() => { markAllSeen(); setOpen(false); }}>Tout marquer comme vu</button>}
             <button onClick={() => { onOpenTools(); setOpen(false); }}>Voir les stuffs</button>
@@ -468,17 +485,26 @@ function Bell({ onOpenTools }: { onOpenTools: () => void }) {
   );
 }
 
+/** Une seule bulle par catégorie : la plus récente + « et N autres ». */
 function Toasts() {
   const { toasts } = useNotifications();
   return (
     <div className="toasts">
-      {toasts.map(t => (
-        <div key={t.id} className="toast panel">
-          <span>{t.kind === 'res' ? '📦' : t.kind === 'msg' ? '💬' : '🛡️'} {t.text}</span>
-          {t.url && <a href={t.url} target="_blank" rel="noreferrer">Voir ↗</a>}
-          <button onClick={() => dismissToast(t.id)}>✕</button>
-        </div>
-      ))}
+      {CATS.map(c => {
+        const g = toasts.filter(t => catOf(t) === c.id); if (!g.length) return null;
+        const last = g.reduce((a, b) => (b.at > a.at ? b : a));
+        return (
+          <div key={c.id} className={`toast panel cat-${c.id}`}>
+            <span className="toast-ic">{c.icon}</span>
+            <span className="toast-body">
+              <small>{c.label}{g.length > 1 ? ` · ${g.length} ${c.plural}` : ''}</small>
+              <span>{last.text}</span>
+            </span>
+            {last.url && <a href={last.url} target="_blank" rel="noreferrer">Voir ↗</a>}
+            <button onClick={() => dismissCat(c.id)} title="Fermer">✕</button>
+          </div>
+        );
+      })}
     </div>
   );
 }

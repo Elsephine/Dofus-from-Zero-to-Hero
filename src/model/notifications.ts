@@ -6,7 +6,39 @@ import { labelOf } from './search';
 import { profiles } from './profiles';
 import type { Stuff } from './stuffs';
 
-export interface Notif { id: string; text: string; url?: string; who: number; at: string; kind: 'stuff' | 'res' | 'msg' }
+export interface Notif { id: string; text: string; url?: string; who: number; at: string; kind: 'stuff' | 'res' | 'msg'; cat?: Cat }
+
+/** Catégories : on regroupe les bulles par catégorie et chacune peut être mise en sourdine. */
+export type Cat = 'chat' | 'trade' | 'news' | 'stuff';
+export const CATS: { id: Cat; icon: string; label: string; plural: string }[] = [
+  { id: 'chat', icon: '💬', label: 'Discussion', plural: 'nouveaux messages' },
+  { id: 'trade', icon: '🎁', label: 'Échanges & ressources', plural: 'nouveautés' },
+  { id: 'news', icon: '🎉', label: 'Annonces', plural: 'annonces' },
+  { id: 'stuff', icon: '🛡️', label: 'Stuffs', plural: 'nouveaux stuffs' },
+];
+export const catOf = (n: Notif): Cat => n.cat ?? (n.kind === 'stuff' ? 'stuff' : n.kind === 'res' ? 'trade' : 'chat');
+const MUTE = 'fzth:v2:notifMute';
+let muted: Cat[] = (() => { try { return JSON.parse(localStorage.getItem(MUTE) ?? '[]'); } catch { return []; } })();
+export const isMuted = (c: Cat) => muted.includes(c);
+export function setMuted(c: Cat, on: boolean) {
+  muted = on ? [...new Set([...muted, c])] : muted.filter(x => x !== c);
+  try { localStorage.setItem(MUTE, JSON.stringify(muted)); } catch { /* ignore */ }
+  toasts = toasts.filter(t => !muted.includes(catOf(t))); emit();
+}
+
+/** Ajoute des bulles (sauf catégories en sourdine) et envoie une seule notification navigateur par catégorie. */
+function addToasts(ns: Notif[]) {
+  const shown = ns.filter(n => !isMuted(catOf(n)));
+  if (!shown.length) return;
+  toasts = [...toasts, ...shown];
+  for (const n of shown) setTimeout(() => { toasts = toasts.filter(t => t.id !== n.id); emit(); }, 10_000);
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+    for (const c of CATS) {
+      const g = shown.filter(n => catOf(n) === c.id); if (!g.length) continue;
+      try { new Notification(`${c.icon} ${c.label}`, { body: g.length === 1 ? g[0].text : `${g.length} ${c.plural} · ${g.reduce((a, b) => (b.at > a.at ? b : a)).text}`, tag: 'fzth-' + c.id }); } catch { /* ignore */ }
+    }
+  }
+}
 const POLL_MS = 30_000;
 const seenKey = (p: number) => `fzth:v2:stuffSeen:${p}`;
 
@@ -51,13 +83,7 @@ async function poll() {
   const allNew = [...fresh, ...keptRes, ...resNotifs.filter(r => !keptRes.some(k => k.id === r.id))];
   const newOnes = [...fresh.filter(f => !unseen.some(u => u.id === f.id)), ...resNotifs];
   unseen = allNew;
-  if (newOnes.length) {
-    toasts = [...toasts, ...newOnes];
-    for (const n of newOnes) setTimeout(() => { toasts = toasts.filter(t => t.id !== n.id); emit(); }, 8000);
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-      for (const n of newOnes) try { new Notification('From Zero to Hero', { body: n.text }); } catch { /* ignore */ }
-    }
-  }
+  addToasts(newOnes);
   emit();
 }
 
@@ -77,14 +103,11 @@ export function markAllSeen() {
 }
 /** Messages éphémères venant d'ailleurs (messagerie). */
 export function pushToasts(ns: Notif[]) {
-  toasts = [...toasts, ...ns];
-  for (const n of ns) setTimeout(() => { toasts = toasts.filter(t => t.id !== n.id); emit(); }, 8000);
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
-    for (const n of ns) try { new Notification('From Zero to Hero', { body: n.text }); } catch { /* ignore */ }
-  }
+  addToasts(ns);
   emit();
 }
 export const dismissToast = (id: string) => { toasts = toasts.filter(t => t.id !== id); emit(); };
+export const dismissCat = (c: Cat) => { toasts = toasts.filter(t => catOf(t) !== c); emit(); };
 export async function enableBrowserNotifications() {
   if (typeof Notification === 'undefined') return 'unsupported';
   return Notification.requestPermission();

@@ -625,3 +625,18 @@ body.pip { margin: 0; }
 .ov-res-head strong { font: 15px Georgia, serif; }
 .ov-res-bar { height: 4px; border-radius: 3px; background: #ffffff12; overflow: hidden; margin-top: 4px; }
 .ov-res-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--world-accent), var(--gold2)); }
+
+/* Notifications par catégorie */
+.bell-menu h3 { display: flex; justify-content: space-between; align-items: center; }
+.bell-gear { padding: 2px 8px; font-size: 14px; }
+.notif-settings { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 8px; background: #ffffff08; }
+.notif-group summary { cursor: pointer; font-size: 13px; padding: 4px 0; color: var(--gold2); display: flex; align-items: center; gap: 6px; }
+.notif-group summary .badge { position: static; }
+.notif-group > a, .notif-group > span { display: block; margin: 3px 0 3px 18px; padding: 5px 6px; border-radius: 6px; background: #ffffff08; font-size: 13px; }
+.toast { max-width: 340px; }
+.toast-ic { font-size: 20px; }
+.toast-body { display: flex; flex-direction: column; min-width: 0; }
+.toast-body small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.toast-body span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.toast.cat-chat { border-left: 3px solid #6aa8ff; } .toast.cat-trade { border-left: 3px solid #4ade80; }
+.toast.cat-news { border-left: 3px solid var(--gold); } .toast.cat-stuff { border-left: 3px solid #c084fc; }
