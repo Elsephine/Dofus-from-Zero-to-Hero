@@ -576,3 +576,5 @@ body.pip { margin: 0; }
 .ov-res-ctrl button { padding: 1px 6px; font-size: 11px; }
 .ov-res-ctrl small { margin-left: auto; color: var(--muted); font-size: 11px; }
 .toggle.small { font-size: 11px; }
+
+.ov-warn { margin: 0; padding: 6px 8px; border-radius: 8px; background: #e1495122; border: 1px solid #e1495166; font-size: 12px; }

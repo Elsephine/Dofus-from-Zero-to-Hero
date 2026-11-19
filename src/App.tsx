@@ -384,6 +384,7 @@ function MeMenu({ profile, onOverlay, onChange, onLogout }: { profile: (typeof p
           <button className="primary" onClick={() => { onOverlay(); setOpen(false); }}>⧉ Ouvrir l’overlay à côté de Dofus</button>
           <button onClick={onChange}>⇄ Changer de personnage</button>
           <button onClick={onLogout}>⏻ Se déconnecter (oublier le code ici)</button>
+          <small className="meta">Version du {new Date(__BUILD__).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
         </div>
       )}
     </div>

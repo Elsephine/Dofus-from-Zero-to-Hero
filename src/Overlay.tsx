@@ -23,6 +23,12 @@ export function OverlayView({ profileId }: { profileId: number }) {
   return <OverlayQuests profileId={profileId} isDone={isDone} status={status} onMode={setMode} />;
 }
 
+const isPip = () => typeof window !== 'undefined' && location.hash !== '#overlay';
+function NoPipNotice() {
+  if (isPip()) return null;
+  return <p className="ov-warn">⚠ Ce navigateur ne peut pas garder cette fenêtre au premier plan. Ouvre le site dans <strong>Chrome ou Edge sur ordinateur</strong> pour avoir l’overlay toujours visible au-dessus de Dofus.</p>;
+}
+
 function ModeTabs({ mode, onMode }: { mode: 'quetes' | 'ressources'; onMode: (m: 'quetes' | 'ressources') => void }) {
   return (
     <div className="ov-tabs">
@@ -59,6 +65,7 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
         <ModeTabs mode="ressources" onMode={onMode} />
         <span className={`sync ${status}`} title={status}>●</span>
       </header>
+      <NoPipNotice />
       <label className="toggle small"><input type="checkbox" checked={onlyMine} onChange={e => { setOnlyMine(e.target.checked); try { localStorage.setItem('fzth:v2:ovMine', e.target.checked ? '1' : '0'); } catch { /* ignore */ } }} /> Seulement ce que je récolte ✋ · {teamMode ? `équipe ×${factor}` : `moi ×${mult}`}</label>
       <ul className="ov-res">
         {rows.map(r => (
@@ -96,6 +103,7 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
 
   return (
     <div className="overlay">
+      <NoPipNotice />
       <ModeTabs mode="quetes" onMode={onMode} />
       <header>
         <img className="avatar big" src={new URL(`${import.meta.env.BASE_URL}persos/${profile.image}`, location.href).href} alt="" />
@@ -135,7 +143,9 @@ export async function openOverlay(profileId: number, dofusId?: string) {
   if (dofusId) try { localStorage.setItem(LS, dofusId); } catch { /* ignore */ }
   const pip = (window as unknown as { documentPictureInPicture?: PipApi }).documentPictureInPicture;
   if (pip) {
-    const w = await pip.requestWindow({ width: 360, height: 560 });
+    let w: Window;
+    try { w = await pip.requestWindow({ width: 360, height: 560 }); }
+    catch { window.open(`${location.pathname}#overlay`, 'fzth-overlay', 'width=380,height=620'); return; }
     // Recopie les styles du site dans la mini-fenêtre.
     for (const sheet of Array.from(document.styleSheets)) {
       try {
