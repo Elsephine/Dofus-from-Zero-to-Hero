@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { catalog } from './model/catalog';
+import { dofusInfo } from './data/tougli/dofus-info';
 import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
 import { toggle, useProgress } from './model/progress';
@@ -59,7 +60,7 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
   rows.sort((a, b) => { const ia = order.indexOf(a.k), ib = order.indexOf(b.k); return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib); });
   const add = (r: (typeof rows)[number], n: number) => setQty(profileId, r.k, Math.max(0, r.mine + n), r.qty * mult);
   return (
-    <div className="overlay">
+    <div className="overlay ov-quests" data-world={profile.world}>
       <header>
         <img className="avatar big" src={new URL(`${import.meta.env.BASE_URL}persos/${profile.image}`, location.href).href} alt="" />
         <ModeTabs mode="ressources" onMode={onMode} />
@@ -71,7 +72,7 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
         {rows.map(r => (
           <li key={r.k} className={r.owner === profileId ? 'mine' : ''}>
             <div className="ov-res-head">
-              <ResIcon name={r.name} size={22} />
+              <span className="ov-res-icon"><ResIcon name={r.name} size={34} /></span>
               <strong>{r.name}</strong>
               <span className="missing">−{r.missing.toLocaleString('fr-FR')}</span>
               {r.owner === undefined && <button className="claim-btn" title="Je m’en occupe" onClick={() => void setClaim(r.k, true)}>✋</button>}
@@ -81,6 +82,7 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
               <button onClick={() => add(r, 1)}>+1</button><button onClick={() => add(r, 10)}>+10</button><button onClick={() => add(r, 100)}>+100</button>
               <small>{r.have.toLocaleString('fr-FR')} / {r.need.toLocaleString('fr-FR')}</small>
             </div>
+            <div className="ov-res-bar"><i style={{ width: `${Math.min(100, (r.have / Math.max(1, r.need)) * 100)}%` }} /></div>
           </li>
         ))}
         {!rows.length && <li className="meta">{onlyMine ? 'Rien de pris avec ✋ pour l’instant.' : 'Plus rien ne manque 🎉'}</li>}
@@ -101,36 +103,73 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
   const next = all.filter(i => !isDone(profileId, i.id)).slice(0, count);
   const last = [...all].reverse().find(i => isDone(profileId, i.id));
 
+  const pct = v.itemIds.length ? Math.round((done / v.itemIds.length) * 100) : 0;
+  const info = dofusInfo.find(d => d.id === raw.id);
+  const abs = (path: string) => new URL(`${import.meta.env.BASE_URL}${path}`, location.href).href;
+  // Bandeau d'œufs : Dofus commencés (ou celui affiché) en premier, pour changer d'un clic.
+  const eggs = dofusInfo.filter(d => catalog.some(c => c.id === d.id)).map(d => {
+    const c = viewFor(catalog.find(x => x.id === d.id)!, profileId, isDone);
+    const n = c.itemIds.filter(id => isDone(profileId, id)).length;
+    return { d, n, total: c.itemIds.length };
+  }).sort((a, b) => Number(b.d.id === raw.id) - Number(a.d.id === raw.id) || Number(b.n > 0 && b.n < b.total) - Number(a.n > 0 && a.n < a.total));
+  const [first, ...rest] = next;
+  const chipsOf = (i: (typeof next)[number]) => (
+    <div className="ov-chips">
+      {i.dungeon?.captureOcre && <span className="ov-chip ocre" title="Donjon à capturer pour le Dofus Ocre">◆ Ocre</span>}
+      {i.dungeon?.tourDuMonde && <span className="ov-chip tdm" title="Demandé dans le Tour du monde">🌍</span>}
+      {i.dungeon?.name && <span className="ov-chip dj">⛫ {i.dungeon.name}</span>}
+      {(i.objectives ?? []).filter(o => !(o.type === 'donjon' && i.dungeon?.name)).map((o, k) => {
+        const ic = iconInfo(o.type);
+        return <span key={k} className={`ov-chip f-${ic.family}`} title={ic.label}>{ic.short.split(' ')[0]}{o.count ? `×${o.count}` : ''}{o.label && o.type === 'donjon' ? ` ${o.label}` : ''}</span>;
+      })}
+    </div>
+  );
+
   return (
-    <div className="overlay">
+    <div className="overlay ov-quests" data-world={profile.world}>
       <NoPipNotice />
       <ModeTabs mode="quetes" onMode={onMode} />
-      <header>
-        <img className="avatar big" src={new URL(`${import.meta.env.BASE_URL}persos/${profile.image}`, location.href).href} alt="" />
-        <select value={raw.id} onChange={e => pick(e.target.value)}>{catalog.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <span className={`sync ${status}`} title={status}>●</span>
-      </header>
-      <div className="ov-progress"><span className="bar"><span style={{ width: `${v.itemIds.length ? (done / v.itemIds.length) * 100 : 0}%` }} /></span><small>{done}/{v.itemIds.length}</small></div>
-      <ul>
-        {next.map((i, n) => (
-          <li key={i.id} className={n === 0 ? 'first' : ''}>
-            {i.hint && <div className="hint">ℹ {i.hint}</div>}
-            <label>
-              <input type="checkbox" checked={false} onChange={() => toggle(profileId, i.id, true)} />
-              <span>{i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.name}</a> : i.name}<small>{i.section}</small></span>
-            </label>
-            <div className="chips">
-              {i.dungeon?.captureOcre && <span className="chip ocre">Ocre</span>}
-              {i.dungeon?.name && <span className="chip f-donjon">⛫ {i.dungeon.name}</span>}
-              {(i.objectives ?? []).filter(o => !(o.type === 'donjon' && i.dungeon?.name)).map((o, k) => <span key={k} className="chip">{iconInfo(o.type).short}{o.count ? ` ×${o.count}` : ''}{o.label ? ` · ${o.label}` : ''}</span>)}
-            </div>
+      <section className="ov-hero" style={info?.image ? { backgroundImage: `radial-gradient(circle at 85% 40%, transparent 0, var(--bg) 70%), url(${abs('dofus/' + info.image)})` } : undefined}>
+        <div className="ov-ring" style={{ background: `conic-gradient(var(--world-accent) ${pct * 3.6}deg, #ffffff15 0)` }}>
+          {info?.image && <img src={abs('dofus/' + info.image)} alt="" />}
+        </div>
+        <div className="ov-hero-text">
+          <strong>{raw.name}</strong>
+          <small>{done}/{v.itemIds.length} · {pct} %</small>
+          <span className="ov-me"><img src={abs('persos/' + profile.image)} alt="" />{profile.name}<i className={`sync-dot ${status}`} /></span>
+        </div>
+      </section>
+      <nav className="ov-eggs">
+        {eggs.map(({ d, n, total }) => (
+          <button key={d.id} className={`ov-egg${d.id === raw.id ? ' on' : ''}${n === total ? ' complete' : ''}`} onClick={() => pick(d.id)} title={`${d.name} · ${n}/${total}`}>
+            {d.image && <img src={abs('dofus/' + d.image)} alt="" />}
+            {n > 0 && n < total && <i style={{ width: `${(n / total) * 100}%` }} />}
+          </button>
+        ))}
+      </nav>
+      {first ? (
+        <article className="ov-next">
+          <span className="ov-label">Prochaine quête · {first.section}</span>
+          {first.hint && <p className="ov-hint">ℹ {first.hint}</p>}
+          <div className="ov-next-main">
+            <button className="ov-check big" onClick={() => toggle(profileId, first.id, true)} title="Valider cette quête">✓</button>
+            <span className="ov-name">{first.url ? <a href={first.url} target="_blank" rel="noreferrer">{first.name}</a> : first.name}</span>
+          </div>
+          {chipsOf(first)}
+        </article>
+      ) : <p className="ov-done">🎉 Ce Dofus est terminé !</p>}
+      <ul className="ov-list">
+        {rest.map(i => (
+          <li key={i.id}>
+            <button className="ov-check" onClick={() => toggle(profileId, i.id, true)} title="Valider">✓</button>
+            <span className="ov-name">{i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.name}</a> : i.name}</span>
+            {chipsOf(i)}
           </li>
         ))}
-        {!next.length && <li className="meta">Ce Dofus est terminé 🎉</li>}
       </ul>
       <footer>
         {last && <button onClick={() => toggle(profileId, last.id, false)} title={`Décocher « ${last.name} »`}>↶ Annuler</button>}
-        <button onClick={() => setCount(count === 6 ? 15 : 6)}>{count === 6 ? 'Plus' : 'Moins'}</button>
+        <button onClick={() => setCount(count === 6 ? 15 : 6)}>{count === 6 ? '＋ Plus' : '－ Moins'}</button>
         <a className="link-button" href={HUNT} target="_blank" rel="noreferrer">🧭 Chasse</a>
       </footer>
     </div>
