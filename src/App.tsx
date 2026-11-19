@@ -8,7 +8,7 @@ import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
 import { requirements } from './model/requirements';
 import { Tools } from './Tools';
-import { Mates, OfferButton } from './Mates';
+import { Mates, OfferButton, ResIcon } from './Mates';
 import { Messages } from './Messages';
 import { onNewMessages, post as postMessage, useMessages, watchMessages } from './model/messages';
 import { Clock } from './Clock';
@@ -338,6 +338,7 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
               <label title={r.quests.join(' · ')}>
                 <input type="checkbox" checked={have} onChange={() => toggle(profileId, key(r.name))} />
                 <span className="qty">{(r.qty * m).toLocaleString('fr-FR')}</span>
+                <ResIcon name={r.name} size={20} />
                 <span className="rname">{r.name}</span>
                 <Mates id={key(r.name)} profileId={profileId} isDone={isDone} />
                 {have && <OfferButton name={r.name} profileId={profileId} />}

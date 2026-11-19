@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { post } from './model/messages';
+import { useResourceIcon } from './model/resourceIcons';
 import { profiles } from './model/profiles';
 import { teamInfo } from './model/progress';
 
@@ -26,4 +27,10 @@ export function OfferButton({ name, profileId }: { name: string; profileId: numb
       {sent ? '✓' : '📣'}
     </button>
   );
+}
+
+/** Icône officielle d'une ressource (ou un petit emplacement vide tant qu'elle n'est pas connue). */
+export function ResIcon({ name, size = 22 }: { name: string; size?: number }) {
+  const url = useResourceIcon(name);
+  return url ? <img className="res-icon" src={url} alt="" loading="lazy" width={size} height={size} /> : <span className="res-icon empty" style={{ width: size, height: size }} />;
 }

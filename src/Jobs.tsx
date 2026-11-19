@@ -4,7 +4,7 @@ import { jobs } from './data/metiers';
 import { qtyOf, setQty, teamInfo, toggle } from './model/progress';
 import { profiles } from './model/profiles';
 import { post } from './model/messages';
-import { Mates, OfferButton } from './Mates';
+import { Mates, OfferButton, ResIcon } from './Mates';
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const key = (name: string) => 'job:' + norm(name).replace(/[^a-z0-9]+/g, '-');
@@ -64,6 +64,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
     return (
       <div key={name} className={`res-card qty-card${d ? ' done' : ''}`} title={title}>
         <input type="checkbox" checked={d} onChange={() => toggle(profileId, k)} title="J’ai tout" />
+        <ResIcon name={name} />
         <span className="rname">{name}</span>
         <label className="have" title="Combien j’en ai">
           <input type="number" min={0} inputMode="numeric" value={have ?? ''} placeholder="j’ai…"
