@@ -25,28 +25,65 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
 /* Écran sans défilement global : seules les listes défilent. */
 .app { height: 100%; display: flex; flex-direction: column; padding: 10px; gap: 10px; }
 .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.top h1 { font-size: 22px; color: var(--gold2); }
+.top h1 { font-size: 22px; }
+.home-link { background: none; border: none; padding: 0; color: var(--gold2); font: inherit; }
 .top .sym { color: var(--world-accent); }
 .profiles { display: flex; gap: 6px; flex: 1; }
 .profiles button small { color: var(--muted); }
 .profiles button.on { border-color: var(--world-accent); box-shadow: 0 0 12px var(--world-glow); }
 .sync { font-size: 12px; }
 .sync.ok { color: var(--green); } .sync.offline, .sync.badcode { color: #ff8f8f; } .sync.local, .sync.syncing { color: var(--muted); }
-
 .panel { background: var(--panel); border: 1px solid var(--world-border); border-radius: 12px; padding: 12px; }
-.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px 1fr; gap: 10px; }
-.journal { display: flex; flex-direction: column; min-height: 0; }
-.journal h2 { font-size: 16px; color: var(--gold); margin-bottom: 8px; }
-.journal ul { list-style: none; margin: 0; padding: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
-.dofus-card { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px; text-align: left; }
-.dofus-card.on { border-color: var(--world-accent); background: color-mix(in srgb, var(--world-accent) 14%, var(--panel2)); }
-.dofus-card .count { color: var(--muted); font-size: 12px; }
-.dofus-card.complete .name { color: var(--gold2); }
-.bar { grid-column: 1 / -1; height: 4px; background: #0006; border-radius: 4px; overflow: hidden; }
+.bar { display: block; height: 4px; background: #0006; border-radius: 4px; overflow: hidden; }
+.bar.big { height: 6px; margin-top: 8px; }
 .bar span { display: block; height: 100%; background: var(--world-accent); transition: width .3s; }
 
+/* Accueil : tous les Dofus en images */
+.home { flex: 1; min-height: 0; overflow: auto; }
+.home h2 { color: var(--gold); font-size: 18px; margin-bottom: 10px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.egg { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; background: #0003; transition: transform .15s, box-shadow .15s; }
+.egg:hover { transform: translateY(-2px); box-shadow: 0 0 18px var(--world-glow); border-color: var(--world-accent); }
+.egg img { width: 72px; height: 72px; object-fit: contain; filter: drop-shadow(0 4px 8px #0008); }
+.egg .name { font-size: 12px; text-align: center; line-height: 1.2; min-height: 2.4em; }
+.egg .ring { width: 80%; height: 4px; background: #0006; border-radius: 4px; overflow: hidden; }
+.egg .ring span { display: block; height: 100%; background: var(--world-accent); }
+.egg small { color: var(--muted); font-size: 11px; }
+.egg.soon img { filter: grayscale(.7) brightness(.7); }
+.egg.soon .name { color: var(--muted); }
+.egg.complete { border-color: var(--gold); box-shadow: 0 0 14px #d8ad6255; }
+.egg.complete .name { color: var(--gold2); }
+
+/* Page d'un Dofus */
+.dofus-page { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.reward { display: flex; gap: 14px; align-items: center; position: relative; }
+.reward img { width: 88px; height: 88px; object-fit: contain; flex: none; filter: drop-shadow(0 0 14px var(--world-glow)); }
+.reward-text { flex: 1; min-width: 0; }
+.reward h2 { font-size: 22px; color: var(--gold2); }
+.back { position: absolute; top: 8px; right: 8px; font-size: 12px; }
+.stats { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip.stat { background: color-mix(in srgb, var(--world-accent) 22%, transparent); color: var(--world-bright); font-size: 12px; }
+.effect { margin: 6px 0 0; font-size: 13px; color: var(--text); opacity: .85; }
+.empty { color: var(--muted); }
+.tabs { display: none; gap: 6px; }
+.tabs button.on { border-color: var(--world-accent); color: var(--world-bright); }
+.split { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 320px; gap: 10px; }
+
+.resources { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.resources h3 { font-size: 16px; color: var(--gold); }
+.mult { display: flex; align-items: center; gap: 4px; color: var(--gold2); font-size: 16px; }
+.mult input { width: 52px; font: inherit; font-size: 14px; padding: 4px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.kamas-need { margin: 0; font-size: 13px; color: var(--muted); }
+.kamas-need strong { color: var(--gold2); font-weight: normal; }
+.res-list { list-style: none; margin: 0; padding: 0; overflow: auto; min-height: 0; }
+.res-list label { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+.res-list label:hover { background: #ffffff08; }
+.res-list .qty { min-width: 44px; text-align: right; color: var(--gold2); font-variant-numeric: tabular-nums; }
+.res-list li.done .qty, .res-list li.done .rname { opacity: .4; text-decoration: line-through; }
+
 .detail { display: flex; flex-direction: column; min-height: 0; }
-.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.detail-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.detail-head .meta { margin: 0; }
 .detail-head h2 { font-size: 20px; color: var(--gold2); }
 .dpln { font: 12px system-ui, sans-serif; margin-left: 6px; }
 .meta { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
@@ -81,7 +118,13 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
 .modal .row { display: flex; justify-content: flex-end; gap: 8px; }
 .warn { color: #ffb3b3 !important; }
 
-@media (max-width: 760px) {
-  .layout { grid-template-columns: 1fr; grid-template-rows: 150px 1fr; }
+@media (max-width: 900px) {
+  .tabs { display: flex; }
+  .split { grid-template-columns: 1fr; }
+  .split.show-quetes .resources, .split.show-ressources .detail { display: none; }
+  .reward img { width: 60px; height: 60px; }
+  .reward .effect { font-size: 12px; }
+  .back { position: static; order: -1; flex-basis: 100%; }
+  .reward { flex-wrap: wrap; }
   .chips { max-width: 50%; }
 }
