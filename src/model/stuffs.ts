@@ -2,6 +2,7 @@
 // Hors ligne : les ajouts restent sur l'appareil (local: true) et sont envoyés à la prochaine connexion.
 import { useEffect, useState } from 'react';
 import { codeFor, rpc } from './progress';
+import { refreshNotifications } from './notifications';
 
 export interface Stuff { id: string; profile_id: number; name: string; url: string; created_at: string; local?: boolean }
 const LS = 'fzth:v2:stuffs';
@@ -19,7 +20,7 @@ export function useStuffs(profileId: number) {
       // Envoie d'abord ce qui a été ajouté hors ligne.
       for (const s of read().filter(x => x.local)) await rpc('fzth_stuff_add', { p_profile: profileId, p_code: code, p_name: s.name, p_url: s.url });
       const rows = await rpc<Stuff[]>('fzth_stuff_list', { p_profile: profileId, p_code: code });
-      set(rows ?? []); setOnline(true);
+      set(rows ?? []); setOnline(true); refreshNotifications();
     } catch { setOnline(false); }
   };
   useEffect(() => { void refresh(); }, [profileId]); // eslint-disable-line react-hooks/exhaustive-deps

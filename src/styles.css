@@ -293,3 +293,16 @@ body.pip { margin: 0; }
 .overlay .chips { justify-content: flex-start; max-width: none; margin: 4px 0 0 24px; }
 .overlay .hint { padding: 0 0 4px; }
 .overlay footer { display: flex; gap: 6px; } .overlay footer > * { flex: 1; text-align: center; font-size: 12px; }
+
+/* Notifications */
+.bell-wrap { position: relative; }
+.bell { position: relative; padding: 4px 8px; }
+.bell.has { border-color: var(--gold); box-shadow: 0 0 10px #d8ad6244; }
+.bell .badge { position: absolute; top: -6px; right: -6px; background: #e14951; color: #fff; border-radius: 10px; font-size: 10px; padding: 1px 5px; }
+.bell-menu { position: absolute; right: 0; top: 36px; width: 320px; z-index: 20; display: flex; flex-direction: column; gap: 6px; }
+.bell-menu h3 { color: var(--gold); font-size: 15px; }
+.bell-menu a { padding: 6px; border-radius: 6px; background: #ffffff08; font-size: 13px; }
+.toasts { position: fixed; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 30; }
+.toast { display: flex; align-items: center; gap: 10px; font-size: 13px; box-shadow: 0 8px 24px #0008; animation: toast-in .3s ease; }
+.toast button { padding: 2px 6px; }
+@keyframes toast-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }

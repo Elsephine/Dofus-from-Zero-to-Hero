@@ -11,6 +11,7 @@ import { Jobs } from './Jobs';
 import { Almanax } from './Almanax';
 import { Team } from './Team';
 import { OverlayView, openOverlay } from './Overlay';
+import { dismissToast, enableBrowserNotifications, markAllSeen, useNotifications, watchNotifications } from './model/notifications';
 import { picksFor, setPick, viewFor } from './model/choices';
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
@@ -30,6 +31,7 @@ export function App() {
   useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
+  useEffect(() => { watchNotifications(profile?.id ?? null); }, [profile?.id]);
 
   // Fenêtre overlay séparée (navigateurs sans mini-fenêtre) : #overlay
   if (location.hash === '#overlay' && profile) return <OverlayView profileId={profile.id} />;
@@ -72,8 +74,10 @@ export function App() {
           <button onClick={() => setActive(null)} title="Revenir au choix du personnage">Changer</button>
           <button onClick={() => { logout(profile.id); setActive(null); }} title="Oublier le code sur cet appareil">Se déconnecter</button>
         </div>
+        <Bell onOpenTools={() => setView('tools')} />
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
       </header>
+      <Toasts />
 
       {view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
@@ -282,6 +286,43 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
         {!items.length && <li className="meta">Aucune ressource pour les quêtes restantes.</li>}
       </ul>
     </aside>
+  );
+}
+
+function Bell({ onOpenTools }: { onOpenTools: () => void }) {
+  const { unseen, permission } = useNotifications();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bell-wrap">
+      <button className={`bell${unseen.length ? ' has' : ''}`} onClick={() => setOpen(!open)} title="Notifications de l’équipe">🔔{unseen.length > 0 && <span className="badge">{unseen.length}</span>}</button>
+      {open && (
+        <div className="bell-menu panel">
+          <h3>Notifications</h3>
+          {unseen.length ? unseen.map(n => <a key={n.id} href={n.url} target="_blank" rel="noreferrer">{n.text} ↗</a>) : <p className="meta">Rien de nouveau.</p>}
+          <div className="row">
+            {unseen.length > 0 && <button onClick={() => { markAllSeen(); setOpen(false); }}>Tout marquer comme vu</button>}
+            <button onClick={() => { onOpenTools(); setOpen(false); }}>Voir les stuffs</button>
+          </div>
+          {permission === 'default' && <button className="primary" onClick={() => void enableBrowserNotifications()}>Recevoir aussi les notifications du navigateur</button>}
+          {permission === 'denied' && <p className="meta small">Notifications du navigateur bloquées : à réactiver dans les réglages du site.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Toasts() {
+  const { toasts } = useNotifications();
+  return (
+    <div className="toasts">
+      {toasts.map(t => (
+        <div key={t.id} className="toast panel">
+          <span>🛡️ {t.text}</span>
+          <a href={t.url} target="_blank" rel="noreferrer">Voir ↗</a>
+          <button onClick={() => dismissToast(t.id)}>✕</button>
+        </div>
+      ))}
+    </div>
   );
 }
 
