@@ -8,11 +8,15 @@ import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
 import { requirements } from './model/requirements';
 import { Tools } from './Tools';
+import { Mates, OfferButton } from './Mates';
+import { Messages } from './Messages';
+import { onNewMessages, post as postMessage, useMessages, watchMessages } from './model/messages';
+import { Clock } from './Clock';
 import { Jobs } from './Jobs';
 import { Almanax } from './Almanax';
 import { Team } from './Team';
 import { OverlayView, openOverlay } from './Overlay';
-import { dismissToast, enableBrowserNotifications, markAllSeen, useNotifications, watchNotifications } from './model/notifications';
+import { dismissToast, enableBrowserNotifications, markAllSeen, pushToasts, useNotifications, watchNotifications } from './model/notifications';
 import { picksFor, setPick, viewFor } from './model/choices';
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
@@ -32,7 +36,22 @@ export function App() {
   useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
-  useEffect(() => { watchNotifications(profile?.id ?? null); }, [profile?.id]);
+  useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); }, [profile?.id]);
+  // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
+  useEffect(() => { const off = onNewMessages(ms => {
+    if (view === 'messages') return;
+    pushToasts(ms.map(m => ({ id: 'msg-' + m.id, kind: 'msg' as const, who: m.profile_id, at: m.created_at, text: `${profiles.find(p => p.id === m.profile_id)?.name} : ${m.body}` })));
+  }); return () => { off(); }; }, [view]);
+  // Annonce automatique quand un Dofus vient d'être terminé.
+  useEffect(() => {
+    if (!profile) return;
+    const k = `fzth:v2:finished:${profile.id}`;
+    const now = catalog.filter(raw => { const v = viewFor(raw, profile.id, isDone); return v.itemIds.length > 0 && v.itemIds.every(id => isDone(profile.id, id)); }).map(r => r.id);
+    let prev: string[] | null = null; try { prev = JSON.parse(localStorage.getItem(k) ?? 'null'); } catch { /* ignore */ }
+    if (prev) for (const id of now.filter(x => !prev!.includes(x))) void postMessage('done', `${profile.name} a terminé le ${catalog.find(c => c.id === id)?.name} !`, id);
+    try { localStorage.setItem(k, JSON.stringify(now)); } catch { /* ignore */ }
+  });
+  const { unread } = useMessages();
 
   // Fenêtre overlay séparée (navigateurs sans mini-fenêtre) : #overlay
   if (location.hash === '#overlay' && profile) return <OverlayView profileId={profile.id} />;
@@ -62,13 +81,15 @@ export function App() {
       <header className="top">
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax', 'team'].includes(view) ? 'on' : ''} onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
-          <button className={view === 'jobs' ? 'on' : ''} onClick={() => setView('jobs')}><span className="ic">⚒</span><span className="lbl">Métiers</span></button>
-          <button className={view === 'team' ? 'on' : ''} onClick={() => setView('team')}><span className="ic">👥</span><span className="lbl">Équipe</span></button>
-          <button className={view === 'almanax' ? 'on' : ''} onClick={() => setView('almanax')}><span className="ic">📅</span><span className="lbl">Almanax</span></button>
-          <button className={view === 'tools' ? 'on' : ''} onClick={() => setView('tools')}><span className="ic">🧰</span><span className="lbl">Outils</span></button>
+          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
+          <button className={view === 'jobs' ? 'on' : ''} title="Métiers & ressources" onClick={() => setView('jobs')}><span className="ic">⚒</span><span className="lbl">Métiers</span></button>
+          <button className={view === 'team' ? 'on' : ''} title="Équipe" onClick={() => setView('team')}><span className="ic">👥</span><span className="lbl">Équipe</span></button>
+          <button className={view === 'almanax' ? 'on' : ''} title="Almanax" onClick={() => setView('almanax')}><span className="ic">📅</span><span className="lbl">Almanax</span></button>
+          <button className={view === 'messages' ? 'on' : ''} title="Messages" onClick={() => setView('messages')}><span className="ic">💬{unread > 0 && <span className="badge">{unread}</span>}</span><span className="lbl">Messages</span></button>
+          <button className={view === 'tools' ? 'on' : ''} title="Outils" onClick={() => setView('tools')}><span className="ic">🧰</span><span className="lbl">Outils</span></button>
         </nav>
         <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
+        <Clock />
         <Journal profileId={profile.id} />
         <Bell onOpenTools={() => setView('tools')} />
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
@@ -76,7 +97,7 @@ export function App() {
       </header>
       <Toasts />
 
-      {view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
+      {view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
           <div className="with-rail">
             <DofusRail current={info.id} profileId={profile.id} isDone={isDone} onOpen={setView} />
@@ -315,6 +336,8 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
                 <input type="checkbox" checked={have} onChange={() => toggle(profileId, key(r.name))} />
                 <span className="qty">{(r.qty * m).toLocaleString('fr-FR')}</span>
                 <span className="rname">{r.name}</span>
+                <Mates id={key(r.name)} profileId={profileId} isDone={isDone} />
+                {have && <OfferButton name={r.name} profileId={profileId} />}
               </label>
             </li>
           );
@@ -419,7 +442,7 @@ function Bell({ onOpenTools }: { onOpenTools: () => void }) {
       {open && (
         <div className="bell-menu panel">
           <h3>Notifications</h3>
-          {unseen.length ? unseen.map(n => <a key={n.id} href={n.url} target="_blank" rel="noreferrer">{n.text} ↗</a>) : <p className="meta">Rien de nouveau.</p>}
+          {unseen.length ? unseen.map(n => n.url ? <a key={n.id} href={n.url} target="_blank" rel="noreferrer">🛡️ {n.text} ↗</a> : <span key={n.id} className="notif-res">📦 {n.text}</span>) : <p className="meta">Rien de nouveau.</p>}
           <div className="row">
             {unseen.length > 0 && <button onClick={() => { markAllSeen(); setOpen(false); }}>Tout marquer comme vu</button>}
             <button onClick={() => { onOpenTools(); setOpen(false); }}>Voir les stuffs</button>
@@ -438,8 +461,8 @@ function Toasts() {
     <div className="toasts">
       {toasts.map(t => (
         <div key={t.id} className="toast panel">
-          <span>🛡️ {t.text}</span>
-          <a href={t.url} target="_blank" rel="noreferrer">Voir ↗</a>
+          <span>{t.kind === 'res' ? '📦' : t.kind === 'msg' ? '💬' : '🛡️'} {t.text}</span>
+          {t.url && <a href={t.url} target="_blank" rel="noreferrer">Voir ↗</a>}
           <button onClick={() => dismissToast(t.id)}>✕</button>
         </div>
       ))}

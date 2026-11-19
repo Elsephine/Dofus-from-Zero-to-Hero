@@ -176,6 +176,13 @@ export async function setShare(p: number, shared: boolean) {
 }
 export const teamInfo = () => ({ team, teamLoaded });
 
+/** Objectifs cochés d'un personnage (utile pour les autres membres de l'équipe). */
+export function listDone(profile: number, prefix = ''): string[] {
+  const out: string[] = []; const pre = `${profile}|${prefix}`;
+  for (const [k, e] of entries) if (e.done && k.startsWith(pre)) out.push(k.slice(String(profile).length + 1));
+  return out;
+}
+
 export function isDone(profile: number, id: string) { return !!entries.get(key(profile, id))?.done; }
 
 export function useProgress() {

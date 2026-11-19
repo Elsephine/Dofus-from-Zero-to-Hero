@@ -158,3 +158,38 @@ end $$;
 
 revoke all on function public.fzth_set_share(integer, text, boolean), public.fzth_team_status(integer, text), public.fzth_team_get(integer, text) from public;
 grant execute on function public.fzth_set_share(integer, text, boolean), public.fzth_team_status(integer, text), public.fzth_team_get(integer, text) to anon;
+
+-- ---------- Messagerie d'équipe (lisible par les 3 personnages) ----------
+-- kind : 'text' (message libre), 'offer' (propose une ressource en surplus), 'take' (accepte une offre), 'done' (annonce : Dofus terminé…)
+create table if not exists public.fzth_message (
+  id uuid primary key default gen_random_uuid(),
+  profile_id integer not null check (profile_id between 0 and 2),
+  kind text not null check (kind in ('text', 'offer', 'take', 'done')),
+  body text not null check (length(body) between 1 and 500),
+  ref text check (ref is null or length(ref) <= 200),   -- ressource / Dofus concerné, ou id de l'offre acceptée
+  created_at timestamptz not null default now()
+);
+alter table public.fzth_message enable row level security;
+revoke all on public.fzth_message from anon, authenticated;
+
+create or replace function public.fzth_msg_list(p_profile integer, p_code text)
+returns table (id uuid, profile_id integer, kind text, body text, ref text, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select m.id, m.profile_id, m.kind, m.body, m.ref, m.created_at from fzth_message m order by m.created_at desc limit 200;
+end $$;
+
+create or replace function public.fzth_msg_post(p_profile integer, p_code text, p_kind text, p_body text, p_ref text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare new_id uuid;
+begin
+  perform fzth_check(p_profile, p_code);
+  insert into fzth_message (profile_id, kind, body, ref) values (p_profile, p_kind, trim(p_body), p_ref) returning id into new_id;
+  -- On garde les 500 derniers messages.
+  delete from fzth_message where id in (select id from fzth_message order by created_at desc offset 500);
+  return new_id;
+end $$;
+
+revoke all on function public.fzth_msg_list(integer, text), public.fzth_msg_post(integer, text, text, text, text) from public;
+grant execute on function public.fzth_msg_list(integer, text), public.fzth_msg_post(integer, text, text, text, text) to anon;

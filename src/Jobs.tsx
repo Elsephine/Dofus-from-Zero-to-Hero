@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { jobs } from './data/metiers';
 import { toggle } from './model/progress';
+import { Mates, OfferButton } from './Mates';
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const key = (name: string) => 'job:' + norm(name).replace(/[^a-z0-9]+/g, '-');
@@ -46,6 +47,8 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
       <label key={name} className={`res-card${d ? ' done' : ''}`} title={title}>
         <input type="checkbox" checked={d} onChange={() => toggle(profileId, k)} />
         <span className="rname">{name}</span>
+        <Mates id={k} profileId={profileId} isDone={isDone} />
+        {d && <OfferButton name={name} profileId={profileId} />}
         <span className="qty">{fmt(qty)}</span>
       </label>
     );
