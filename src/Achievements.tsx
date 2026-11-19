@@ -109,7 +109,7 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
       <section className="ach-main-col">
         <div className="row">
           <input className="dj-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Chercher un succès (nom, boss, zone…)" />
-          {hidden > 0 && <label className="toggle"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Voir les succès déjà obtenus ({hidden})</label>}
+          <label className="toggle"><input type="checkbox" checked={!showDone} onChange={e => setShowDone(!e.target.checked)} /> Masquer les succès obtenus{hidden > 0 ? ` (${hidden})` : ''}</label>
         </div>
         {groups.map(g => (
           <div key={g.id} className="ach-group">

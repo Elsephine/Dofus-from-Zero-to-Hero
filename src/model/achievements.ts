@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import type { Ach, AchCat } from '../data/jeu/succes';
 import type { DungeonAch } from '../data/jeu/donjons';
+import { catalog } from './catalog';
 
 export type IsDone = (p: number, id: string) => boolean;
-export interface AchData { cats: AchCat[]; list: Ach[]; byId: Map<number, Ach>; byName: Map<string, Ach>; catOf: Map<number, AchCat>; top: (catId: number) => AchCat }
+export interface AchData { cats: AchCat[]; list: Ach[]; byId: Map<number, Ach>; byName: Map<string, Ach>; catOf: Map<number, AchCat>; top: (catId: number) => AchCat;
+  /** nom de quête (clé) -> succès dont c'est un objectif */ byObjective: Map<string, Ach[]>; byKey: Map<string, Ach> }
 
 let cache: AchData | null = null;
 let loading: Promise<AchData> | null = null;
@@ -16,7 +18,12 @@ export function loadAch(): Promise<AchData> {
     const top = (id: number) => { let c = catOf.get(id)!; while (c.parent && catOf.get(c.parent)) c = catOf.get(c.parent)!; return c; };
     const byName = new Map<string, Ach>();
     for (const a of m.achievements) if (!byName.has(norm(a.n))) byName.set(norm(a.n), a);
-    cache = { cats: m.achCats, list: m.achievements, byId: new Map(m.achievements.map(a => [a.id, a])), byName, catOf, top };
+    const byObjective = new Map<string, Ach[]>(); const byKey = new Map<string, Ach>();
+    for (const a of m.achievements) {
+      if (!byKey.has(qkey(a.n))) byKey.set(qkey(a.n), a);
+      for (const o of a.o ?? []) { const k = qkey(o); const l = byObjective.get(k) ?? []; l.push(a); byObjective.set(k, l); }
+    }
+    cache = { cats: m.achCats, list: m.achievements, byId: new Map(m.achievements.map(a => [a.id, a])), byName, catOf, top, byObjective, byKey };
     return cache;
   });
   return loading;
@@ -29,11 +36,33 @@ export function useAchData(): AchData | null {
 
 export const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 export const achKey = (id: number) => `ach:${id}`;
+/** Clé de comparaison tolérante (accents, œ, ponctuation, préfixe « Succès : ») entre noms de quêtes et objectifs. */
+export const qkey = (s: string) => s.toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae').replace(/^succ[eè]s\s*:\s*/, '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+// Index des quêtes des Dofus par nom : un objectif de succès qui est une quête se coche tout seul quand la quête est faite.
+let questIdx: Map<string, string[]> | null = null;
+function questIds(name: string) {
+  if (!questIdx) {
+    questIdx = new Map();
+    for (const raw of catalog) for (const sec of raw.sections) for (const i of sec.items) {
+      const k = qkey(i.name); const l = questIdx.get(k) ?? []; if (!l.includes(i.id)) l.push(i.id); questIdx.set(k, l);
+    }
+  }
+  return questIdx.get(qkey(name)) ?? [];
+}
+/** Succès dont cette quête fait partie (le plus spécifique d'abord : celui qui a le moins d'objectifs). */
+export function achsForQuest(d: AchData, name: string): Ach[] {
+  const k = qkey(name);
+  const l = [...(d.byObjective.get(k) ?? [])];
+  const self = d.byKey.get(k); if (self && !l.includes(self) && /^succ/i.test(name)) l.unshift(self);
+  return l.sort((a, b) => (a.o?.length ?? 1) - (b.o?.length ?? 1));
+}
 export const objKey = (id: number, i: number) => `acho:${id}:${i}`;
 
 /** Un objectif est fait s'il est coché, ou si c'est lui-même un succès déjà validé (méta-succès). */
 export function objDone(d: AchData, a: Ach, i: number, p: number, isDone: IsDone) {
   if (isDone(p, objKey(a.id, i))) return true;
+  if (questIds(a.o![i]).some(id => isDone(p, id))) return true;
   const sub = d.byName.get(norm(a.o![i]));
   return !!sub && sub.id !== a.id && isDone(p, achKey(sub.id));
 }

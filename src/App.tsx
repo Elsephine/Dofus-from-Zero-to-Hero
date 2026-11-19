@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered } from 'lucide-react';
 import { tagIcon } from './ui/QuestTags';
 import { applyNow, forgetReopen, useOverlayState } from './model/overlayState';
 import { install, useInstall } from './model/install';
@@ -26,7 +26,7 @@ import { OnlineNow } from './Presence';
 const Jobs = lazy(() => import('./Jobs').then(m => ({ default: m.Jobs })));
 import { CatchUp } from './CatchUp';
 const Achievements = lazy(() => import('./Achievements').then(m => ({ default: m.Achievements })));
-import { almostDone, achKey, eventStatus, useAchData } from './model/achievements';
+import { almostDone, achKey, achsForQuest, eventStatus, useAchData } from './model/achievements';
 import { useDungeons } from './model/dungeonData';
 const Almanax = lazy(() => import('./Almanax').then(m => ({ default: m.Almanax })));
 const Team = lazy(() => import('./Team').then(m => ({ default: m.Team })));
@@ -484,6 +484,24 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
   const next = items.find(i => !isDone(profileId, i.id));
   const bulk = (v: boolean) => { if (!dofus) return; for (const id of dofus.itemIds) toggle(profileId, id, v, { silent: true }); setConfirm(''); };
   const ask = (k: 'all' | 'reset') => { if (confirm === k) bulk(k === 'all'); else { setConfirm(k); setTimeout(() => setConfirm(c => (c === k ? '' : c)), 4000); } };
+  // Regroupement des quêtes : par succès (comme Tougli) ou par étape du guide.
+  const [groupBy, setGroupBy] = remember<'succes' | 'etapes'>('fzth:v2:groupBy', 'succes');
+  const achD = useAchData();
+  type Group = { id: string; title: string; items: ItemView[]; ach?: { id: number; pts: number; total: number } };
+  const groups: Group[] = (() => {
+    if (!dofus) return [];
+    if (groupBy === 'etapes' || !achD) return dofus.sections.map(sec => ({ id: sec.id, title: sec.title, items: sec.items }));
+    const out: Group[] = []; const byKey = new Map<string, Group>();
+    for (const sec of dofus.sections) for (const it of sec.items) {
+      const a = achsForQuest(achD, it.name)[0];
+      const k = a ? `a${a.id}` : `s${sec.id}`;
+      let g = byKey.get(k);
+      if (!g) { g = a ? { id: k, title: a.n, items: [], ach: { id: a.id, pts: a.p, total: a.o?.length ?? 1 } } : { id: k, title: `${sec.title} · autres quêtes`, items: [] }; byKey.set(k, g); out.push(g); }
+      if (!g.items.some(x => x.id === it.id)) g.items.push(it);
+    }
+    return out;
+  })();
+  const groupDone = (g: Group) => (g.ach && isDone(profileId, achKey(g.ach.id))) || g.items.every(i => isDone(profileId, i.id));
   const goTo = (id: string) => { setClosed(c => ({ ...c, [id]: false })); setTimeout(() => document.getElementById('sec-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); };
   return (
     <main className="dofus-page v2" style={{ '--egg': eggColor(info.image) } as React.CSSProperties}>
@@ -491,10 +509,10 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
         <aside className="path-scroll" aria-label="Étapes du Dofus">
           <span className="roll top" /><span className="roll bottom" />
           <div className="path">
-            {dofus.sections.map(sec => {
+            {groups.filter(g => !(hideDone && groupDone(g))).map(sec => {
               const d = sec.items.filter(i => isDone(profileId, i.id)).length;
-              const st = d === sec.items.length ? 'done' : sec.items.some(i => i.id === next?.id) ? 'current' : d ? 'started' : 'todo';
-              return <button key={sec.id} className={`path-node ${st}`} onClick={() => goTo(sec.id)} title={`${d}/${sec.items.length}`}><span>{sec.title}</span></button>;
+              const st = groupDone(sec) ? 'done' : sec.items.some(i => i.id === next?.id) ? 'current' : d ? 'started' : 'todo';
+              return <button key={sec.id} className={`path-node ${st}${sec.ach ? ' ach' : ''}`} onClick={() => goTo(sec.id)} title={`${d}/${sec.items.length}`}><span>{sec.title}</span></button>;
             })}
             <span className={`path-egg${pct === 100 ? ' done' : ''}`}>{info.image && <img src={img(info.image)} alt="" />}</span>
           </div>
@@ -530,7 +548,11 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
             <button className="ok-btn" onClick={() => ask('all')}><Check size={15} /> {confirm === 'all' ? 'Confirmer ?' : 'Tout valider'}</button>
             <button className="danger-btn" onClick={() => ask('reset')}><RotateCcw size={15} /> {confirm === 'reset' ? 'Confirmer ?' : 'Réinitialiser'}</button>
             <span className="grow" />
-            <label className="toggle"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Masquer les complétés</label>
+            <span className="seg" role="group" aria-label="Ranger les quêtes">
+              <button className={groupBy === 'succes' ? 'on' : ''} onClick={() => setGroupBy('succes')}><Trophy size={14} /> Par succès</button>
+              <button className={groupBy === 'etapes' ? 'on' : ''} onClick={() => setGroupBy('etapes')}><ListOrdered size={14} /> Par étape</button>
+            </span>
+            <label className="toggle" title="Cache les quêtes faites et les succès déjà obtenus"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Masquer ce qui est fait</label>
           </div>
           {raw && !!raw.choices.length && (
             <div className="choices">
@@ -549,15 +571,26 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
             <button className={tab === 'ressources' ? 'on' : ''} onClick={() => setTab('ressources')}>Ressources</button>
           </nav>
           <div className={`dp-sections${tab === 'ressources' ? ' hide-mobile' : ''}`}>
-            {dofus.sections.map(sec => {
+            {groups.map(sec => {
+              if (hideDone && groupDone(sec)) return null;
               const list = hideDone ? sec.items.filter(i => !isDone(profileId, i.id)) : sec.items;
               const d = sec.items.filter(i => isDone(profileId, i.id)).length;
               const isClosed = closed[sec.id] ?? false;
+              const achDone = !!sec.ach && isDone(profileId, achKey(sec.ach.id));
               return (
-                <div key={sec.id} id={'sec-' + sec.id} className="dp-section">
-                  <button className="orn-title" onClick={() => setClosed(c => ({ ...c, [sec.id]: !isClosed }))}>
-                    <span className="orn-line" /><span className="orn-text">{sec.title} <small>{d}/{sec.items.length}</small> {isClosed ? '▸' : '▾'}</span><span className="orn-line" />
-                  </button>
+                <div key={sec.id} id={'sec-' + sec.id} className={`dp-section${sec.ach ? ' by-ach' : ''}`}>
+                  {sec.ach ? (
+                    <div className={`ach-head${achDone ? ' done' : ''}`}>
+                      <Trophy size={16} />
+                      <button className="ach-head-name" onClick={() => setClosed(c => ({ ...c, [sec.id]: !isClosed }))}>{sec.title} <small>{d}/{sec.items.length}{sec.ach.total > sec.items.length ? ` · ${sec.ach.total} objectifs au total` : ''}</small> {isClosed ? '▸' : '▾'}</button>
+                      <span className="pts">{sec.ach.pts} pts</span>
+                      <label className="ach-head-check" title="J’ai validé ce succès en jeu"><input type="checkbox" checked={achDone} onChange={e => { if (!achDone) burst(e.currentTarget, true); toggle(profileId, achKey(sec.ach!.id)); }} /> Succès obtenu</label>
+                    </div>
+                  ) : (
+                    <button className="orn-title" onClick={() => setClosed(c => ({ ...c, [sec.id]: !isClosed }))}>
+                      <span className="orn-line" /><span className="orn-text">{sec.title} <small>{d}/{sec.items.length}</small> {isClosed ? '▸' : '▾'}</span><span className="orn-line" />
+                    </button>
+                  )}
                   {!isClosed && (list.length ? (
                     <ul className="dp-quests">{list.map((i, n) => <QuestRow key={i.id} item={i} done={isDone(profileId, i.id)} grouped={!!i.group && list[n - 1]?.group === i.group} next={next?.id === i.id}
                       onToggle={() => toggle(profileId, i.id)} />)}</ul>
