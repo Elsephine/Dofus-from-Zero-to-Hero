@@ -1,12 +1,13 @@
 // Overlay à côté de Dofus : mini-fenêtre toujours au premier plan (Document Picture-in-Picture, Chrome / Edge),
 // sinon petite fenêtre séparée. On y coche la prochaine quête sans quitter le jeu.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { catalog } from './model/catalog';
 import { dofusInfo } from './data/tougli/dofus-info';
 import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
-import { toggle, useProgress } from './model/progress';
+import { sync, toggle, useProgress } from './model/progress';
+import { overlayClosed, overlayOpened } from './model/overlayState';
 import { iconInfo } from './model/icons';
 import { ALL_JOB_RES, jobKey } from './model/jobs';
 import { qtyOf, setQty, teamInfo } from './model/progress';
@@ -18,6 +19,7 @@ const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors
 
 export function OverlayView({ profileId }: { profileId: number }) {
   const { isDone, status } = useProgress();
+  useEffect(() => { if (location.hash !== '#overlay') return; const t = setInterval(() => void sync(), 5000); return () => clearInterval(t); }, []);
   const [mode, setModeState] = useState<'quetes' | 'ressources'>(() => { try { return (localStorage.getItem('fzth:v2:overlayMode') as 'ressources') ?? 'quetes'; } catch { return 'quetes'; } });
   const setMode = (m: 'quetes' | 'ressources') => { setModeState(m); try { localStorage.setItem('fzth:v2:overlayMode', m); } catch { /* ignore */ } };
   if (mode === 'ressources') return <OverlayResources profileId={profileId} status={status} onMode={setMode} />;
@@ -118,6 +120,23 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
     const n = c.itemIds.filter(id => isDone(profileId, id)).length;
     return { d, n, total: c.itemIds.length };
   }).sort((a, b) => Number(b.d.id === raw.id) - Number(a.d.id === raw.id) || Number(b.n > 0 && b.n < b.total) - Number(a.n > 0 && a.n < a.total));
+  // Ce que les coéquipiers viennent de cocher sur ce Dofus (affiché quelques secondes).
+  const prevMates = useRef<{ dofus: string; set: Set<string> } | null>(null);
+  const [flash, setFlash] = useState<string[]>([]);
+  const mateDone = mates.flatMap(m => v.itemIds.filter(id => isDone(m.id, id)).map(id => `${m.id}|${id}`));
+  const sig = mateDone.join(',');
+  useEffect(() => {
+    const now = new Set(mateDone); const before = prevMates.current;
+    prevMates.current = { dofus: raw.id, set: now };
+    // Au premier affichage, en changeant de Dofus ou après un gros rattrapage, on ne fait pas défiler tout l'historique.
+    if (before && before.dofus === raw.id && now.size - before.set.size <= 20) {
+      const fresh = [...now].filter(k => !before.set.has(k)).slice(0, 3).map(k => {
+        const [pid, id] = [Number(k.split('|')[0]), k.slice(k.indexOf('|') + 1)];
+        return `${profiles.find(p => p.id === pid)?.name} a fait « ${all.find(i => i.id === id)?.name ?? id} »`;
+      });
+      if (fresh.length) { setFlash(fresh); const t = setTimeout(() => setFlash([]), 8000); return () => clearTimeout(t); }
+    }
+  }, [sig, raw.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [first, ...rest] = next;
   const matesOf = (id: string) => mates.length > 0 && (
     <span className="ov-mates">{mates.map(m => { const ok = isDone(m.id, id); return <img key={m.id} src={abs('persos/' + m.image)} alt={m.name} className={ok ? 'ok' : 'no'} title={`${m.name} : ${ok ? 'déjà faite ✓' : 'pas encore'}`} />; })}</span>
@@ -161,6 +180,7 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
           </button>
         ))}
       </nav>
+      {flash.length > 0 && <div className="ov-flash">{flash.map(f => <span key={f}>✓ {f}</span>)}</div>}
       {mates.length > 0 && (behindCount > 0 || behindOnly) && (
         <button className={`ov-behind${behindOnly ? ' on' : ''}`} onClick={() => setBehindOnly(!behindOnly)}>
           {behindOnly ? '← Toutes les quêtes' : `👥 ${behindCount} quête${behindCount > 1 ? 's' : ''} déjà faite${behindCount > 1 ? 's' : ''} par l’équipe : les voir`}
@@ -220,7 +240,11 @@ export async function openOverlay(profileId: number, dofusId?: string) {
     w.document.body.classList.add('pip');
     const el = w.document.createElement('div'); w.document.body.appendChild(el);
     const root = createRoot(el); root.render(<OverlayView profileId={profileId} />);
-    w.addEventListener('pagehide', () => root.unmount());
+    // Synchro rapide pilotée par la mini-fenêtre elle-même : elle reste visible pendant qu'on joue,
+    // alors que la page du site (cachée derrière le jeu) est ralentie par le navigateur.
+    const t = w.setInterval(() => void sync(), 5000);
+    overlayOpened();
+    w.addEventListener('pagehide', () => { w.clearInterval(t); root.unmount(); overlayClosed(); });
     return;
   }
   // Navigateur sans mini-fenêtre : petite fenêtre séparée (à placer à côté du jeu).

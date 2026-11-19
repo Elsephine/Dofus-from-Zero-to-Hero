@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // appliquée par main.tsx (attend la fermeture de l'overlay)
       injectRegister: null, // enregistré dans main.tsx
       includeAssets: ['icons/*.png'],
       manifest: {

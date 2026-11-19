@@ -1128,3 +1128,8 @@ body:not([data-theme="dark"]) .rc-name small { color: var(--ok); }
 .ov-next-main .ov-mates img { width: 22px; height: 22px; }
 .ov-behind { flex: none; font-size: 12px; padding: 6px 10px; border-radius: 10px; border-color: #d9822b; color: var(--text); background: rgb(217 130 43 / .14); text-align: left; }
 .ov-behind.on { background: #d9822b; color: #fff; }
+
+.ov-banner { border-color: var(--gold); background: rgb(216 173 98 / .14); }
+.ov-banner > svg { color: var(--gold); }
+.ov-banner.soft { border-style: dashed; }
+.ov-flash { flex: none; display: flex; flex-direction: column; gap: 3px; padding: 6px 10px; border-radius: 10px; font-size: 12px; background: rgb(93 154 55 / .18); border: 1px solid var(--ok2); animation: pop-in .35s ease; }

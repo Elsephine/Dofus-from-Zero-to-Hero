@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2 } from 'lucide-react';
+import { applyNow, forgetReopen, useOverlayState } from './model/overlayState';
 import { install, useInstall } from './model/install';
 import { ReportButton, ReportDialog } from './Report';
 import { EggRing, eggColor } from './ui/EggRing';
@@ -122,6 +123,7 @@ export function App() {
         <MeMenu profile={profile} onOverlay={() => void openOverlay(profile.id, info?.id ?? lastDofus)} onChange={() => setActive(null)} onLogout={() => { logout(profile.id); setActive(null); }} />
       </header>
       <ShareBanner profileId={profile.id} />
+      <OverlayBanner profileId={profile.id} />
       {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
       <Toasts />
       <TrophyModal />
@@ -332,6 +334,28 @@ function BackupItems({ profileId }: { profileId: number }) {
     <label className="file-btn"><Upload size={15} /> Restaurer une sauvegarde<input type="file" accept="application/json,.json" onChange={e => { const f = e.target.files?.[0]; if (f) void restore(f); e.target.value = ''; }} /></label>
     {msg && <small className="meta">{msg}</small>}
   </>;
+}
+
+/** Après un rechargement, l'overlay (mini-fenêtre) s'est fermé : on propose de le rouvrir en un clic.
+    Et si une nouvelle version attend la fermeture de l'overlay, on le signale. */
+function OverlayBanner({ profileId }: { profileId: number }) {
+  const { wasOpen, open, updatePending } = useOverlayState();
+  if (wasOpen) return (
+    <div className="share-banner ov-banner">
+      <PictureInPicture2 size={18} />
+      <span><strong>L’overlay s’est fermé</strong> avec le rechargement de la page.</span>
+      <button className="primary" onClick={() => openOverlay(profileId)}>Rouvrir l’overlay</button>
+      <button onClick={forgetReopen}>Non merci</button>
+    </div>
+  );
+  if (open && updatePending) return (
+    <div className="share-banner ov-banner soft">
+      <Sparkles size={18} />
+      <span>Une nouvelle version du site est prête. Elle s’installera quand tu fermeras l’overlay, pour ne pas le faire disparaître en pleine partie.</span>
+      <button onClick={applyNow}>Installer maintenant</button>
+    </div>
+  );
+  return null;
 }
 
 /** Bouton clair / sombre (retenu sur l'appareil). */
