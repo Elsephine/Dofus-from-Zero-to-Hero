@@ -1,33 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share } from 'lucide-react';
+import { install, useInstall } from './model/install';
 import { EggRing, eggColor } from './ui/EggRing';
 import { burst, celebrateDofus, closeTrophy, useTrophy } from './model/celebrate';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
-import { getHistory, hasCode, isUnlocked, login, logout, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
+import { getHistory, hasCode, isUnlocked, login, logout, setShare, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
 import { labelOf, search } from './model/search';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
 import { requirements } from './model/requirements';
-import { Tools } from './Tools';
+const Tools = lazy(() => import('./Tools').then(m => ({ default: m.Tools })));
 import { Mates, OfferButton, ResIcon } from './Mates';
-import { Messages } from './Messages';
+const Messages = lazy(() => import('./Messages').then(m => ({ default: m.Messages })));
 import { onNewMessages, post as postMessage, useMessages, watchMessages } from './model/messages';
 import { Clock } from './Clock';
 import { GoalBanner } from './Goals';
 import { watchGoals } from './model/goals';
 import { setPresencePage, watchTeamLive } from './model/teamlive';
-import { OnlineNow } from './TeamLive';
-import { Jobs } from './Jobs';
+import { OnlineNow } from './Presence';
+const Jobs = lazy(() => import('./Jobs').then(m => ({ default: m.Jobs })));
 import { CatchUp } from './CatchUp';
-import { Achievements, eventStatus } from './Achievements';
-import { almostDone, achKey, useAchData } from './model/achievements';
-import { dungeonFor } from './TeamLive';
-import { dungeonKeys } from './data/jeu/clefs';
-import { Almanax } from './Almanax';
-import { Team } from './Team';
-import { OverlayView, openOverlay } from './Overlay';
+const Achievements = lazy(() => import('./Achievements').then(m => ({ default: m.Achievements })));
+import { almostDone, achKey, eventStatus, useAchData } from './model/achievements';
+import { useDungeons } from './model/dungeonData';
+const Almanax = lazy(() => import('./Almanax').then(m => ({ default: m.Almanax })));
+const Team = lazy(() => import('./Team').then(m => ({ default: m.Team })));
+const OverlayView = lazy(() => import('./Overlay').then(m => ({ default: m.OverlayView })));
+const overlayMod = () => import('./Overlay');
+const openOverlay = (p: number, d?: string) => void overlayMod().then(m => m.openOverlay(p, d));
 import { CATS, catOf, dismissCat, enableBrowserNotifications, isMuted, markAllSeen, pushToasts, setMuted, useNotifications, watchNotifications } from './model/notifications';
 import { picksFor, setPick, viewFor } from './model/choices';
 
@@ -48,6 +50,8 @@ export function App() {
   useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
+  // Précharge l'overlay : la mini-fenêtre doit s'ouvrir juste après le clic.
+  useEffect(() => { const t = setTimeout(() => void overlayMod(), 2500); return () => clearTimeout(t); }, []);
   useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); watchTeamLive(profile?.id ?? null); }, [profile?.id]);
   // Page affichée, visible par les coéquipiers (« Volrod · Dofus Cauchemar »).
   useEffect(() => {
@@ -71,7 +75,7 @@ export function App() {
   const { unread } = useMessages();
 
   // Fenêtre overlay séparée (navigateurs sans mini-fenêtre) : #overlay
-  if (location.hash === '#overlay' && profile) return <OverlayView profileId={profile.id} />;
+  if (location.hash === '#overlay' && profile) return <Suspense fallback={null}><OverlayView profileId={profile.id} /></Suspense>;
 
   const open = (pid: number) => { if (isUnlocked(pid)) { setActive(pid); setView('home'); } else setAsking(pid); };
 
@@ -116,10 +120,12 @@ export function App() {
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
         <MeMenu profile={profile} onOverlay={() => void openOverlay(profile.id, info?.id ?? lastDofus)} onChange={() => setActive(null)} onLogout={() => { logout(profile.id); setActive(null); }} />
       </header>
+      <ShareBanner profileId={profile.id} />
       {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
       <Toasts />
       <TrophyModal />
 
+      <Suspense fallback={<div className="panel page-loading"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div>}>
       <div key={view} className="page-fade">
       {view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
@@ -130,6 +136,7 @@ export function App() {
         )
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
       </div>
+      </Suspense>
     </div>
   );
 }
@@ -139,12 +146,14 @@ function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: 
   const [exists, setExists] = useState<boolean | null | undefined>(undefined); // undefined = en cours de vérification
   const [code, setCode] = useState(''); const [code2, setCode2] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const [share, setShareOpt] = useState(true);
   useEffect(() => { let alive = true; hasCode(profileId).then(v => { if (alive) setExists(v); }); return () => { alive = false; }; }, [profileId]);
   const creating = exists === false || exists === null;
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
     if (creating && exists === false && code !== code2) { setError('Les deux codes ne sont pas identiques.'); return; }
     setBusy(true); const r = await login(profileId, code); setBusy(false);
+    if (r.ok && r.created && share && !r.offline) { try { await setShare(profileId, true); } catch { /* réessayable depuis le bandeau */ } }
     if (r.ok) onOk(); else setError(r.error);
   };
   return (
@@ -157,6 +166,7 @@ function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: 
         ) : exists ? <p>Entre le code de {p.name}.</p> : <p>Serveur injoignable : entre le code de {p.name} (ou choisis-le si c’est la première fois sur cet appareil).</p>}
         <input autoFocus type="password" inputMode="text" autoComplete="current-password" value={code} onChange={e => setCode(e.target.value)} placeholder="Code" />
         {exists === false && <input type="password" value={code2} onChange={e => setCode2(e.target.value)} placeholder="Confirme le code" />}
+        {exists === false && <label className="toggle small share-opt"><input type="checkbox" checked={share} onChange={e => setShareOpt(e.target.checked)} /> Partager ma progression avec l’équipe (conseillé : c’est ce qui permet de jouer ensemble)</label>}
         {error && <p className="warn">{error}</p>}
         <div className="row"><button type="button" onClick={onClose}>Annuler</button><button type="submit" className="primary" disabled={busy || exists === undefined}>{exists === false ? 'Créer mon code' : 'Entrer'}</button></div>
       </form>
@@ -169,6 +179,7 @@ const img = (file: string | null) => (file ? `${import.meta.env.BASE_URL}dofus/$
 /** « Aujourd'hui » : ce qui rapporte le plus avec ce qui est déjà commencé. */
 function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
   const d = useAchData();
+  const djData = useDungeons();
   const { team } = teamInfo();
   const members = profiles.filter(p => p.id === profileId || team[p.id]);
   const [hidden, setHidden] = remember<string>('fzth:v2:nextHidden', '');
@@ -182,8 +193,8 @@ function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone:
   let dj: { name: string; left: number; key?: string; dofus: string } | null = null;
   for (const x of doing) {
     const it = x.left[0]; const label = it.dungeon?.name ?? it.objectives?.find(o => o.type === 'donjon')?.label;
-    const dd = label ? dungeonFor(label) : undefined;
-    if (dd) { dj = { name: dd.name, left: dd.ach.filter(a => members.some(m => !isDone(m.id, achKey(a.id)))).length, key: dungeonKeys[dd.id]?.name, dofus: x.raw.id }; break; }
+    const dd = label && djData ? djData.dungeonFor(label) : undefined;
+    if (dd) { dj = { name: dd.name, left: dd.ach.filter(a => members.some(m => !isDone(m.id, achKey(a.id)))).length, key: djData?.keys[dd.id]?.name, dofus: x.raw.id }; break; }
   }
   const almost = d ? almostDone(d, profileId, isDone)[0] : undefined;
   const ev = d ? eventStatus(d, profileId, isDone).find(x => x.days <= 30 && x.left.length) : undefined;
@@ -222,6 +233,24 @@ function TrophyModal() {
 const SPARKS = Array.from({ length: 34 }, (_, i) => ({ l: (i * 37) % 100, d: 8 + ((i * 7) % 10), delay: -((i * 13) % 17), s: 2 + ((i * 5) % 4), gold: i % 3 !== 0 }));
 function Particles() {
   return <div className="particles" aria-hidden>{SPARKS.map((p, i) => <i key={i} className={p.gold ? 'g' : 'r'} style={{ left: `${p.l}%`, width: p.s, height: p.s, animationDuration: `${p.d}s`, animationDelay: `${p.delay}s` }} />)}</div>;
+}
+
+/** Rappel tant que ma progression n'est pas partagée (sinon « Jouer ensemble », classement, etc. restent vides pour les autres). */
+function ShareBanner({ profileId }: { profileId: number }) {
+  const { team, teamLoaded } = teamInfo();
+  const [later, setLater] = remember<string>(`fzth:v2:shareLater:${profileId}`, '');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  if (!teamLoaded || team[profileId] || later === today) return null;
+  const go = async () => { setBusy(true); setErr(''); try { await setShare(profileId, true); } catch { setErr('Serveur injoignable, réessaie dans un instant.'); } setBusy(false); };
+  return (
+    <div className="share-banner">
+      <Users size={18} />
+      <span><strong>Ta progression n’est pas partagée.</strong> Tes coéquipiers ne voient pas ton avancée : « Jouer ensemble », le classement et les alertes de ressources restent vides pour eux.{err && <em> {err}</em>}</span>
+      <button className="primary" disabled={busy} onClick={() => void go()}>{busy ? '…' : 'Partager maintenant'}</button>
+      <button onClick={() => setLater(today)}>Plus tard</button>
+    </div>
+  );
 }
 
 /** Bouton clair / sombre (retenu sur l'appareil). */
@@ -484,6 +513,19 @@ function useDropdown() {
   return [open, setOpen] as const;
 }
 
+/** « Installer l'appli » : invitation du navigateur, ou mode d'emploi sur iPhone. */
+function InstallItem() {
+  const { canPrompt, installed, ios } = useInstall();
+  const [help, setHelp] = useState(false);
+  if (installed) return null;
+  if (canPrompt) return <button onClick={() => void install()}><Download size={15} /> Installer l’appli sur cet appareil</button>;
+  if (ios) return <>
+    <button onClick={() => setHelp(!help)}><Download size={15} /> Installer l’appli sur l’iPhone</button>
+    {help && <small className="meta install-help">Dans Safari : bouton Partager <Share size={12} />, puis « Sur l’écran d’accueil ».</small>}
+  </>;
+  return null;
+}
+
 function MeMenu({ profile, onOverlay, onChange, onLogout }: { profile: (typeof profiles)[number]; onOverlay: () => void; onChange: () => void; onLogout: () => void }) {
   const [open, setOpen] = useDropdown();
   return (
@@ -495,6 +537,7 @@ function MeMenu({ profile, onOverlay, onChange, onLogout }: { profile: (typeof p
       {open && (
         <div className="dd-menu panel">
           <button className="primary" onClick={() => { onOverlay(); setOpen(false); }}>⧉ Ouvrir l’overlay à côté de Dofus</button>
+          <InstallItem />
           <button onClick={onChange}>⇄ Changer de personnage</button>
           <button onClick={onLogout}>⏻ Se déconnecter (oublier le code ici)</button>
           <small className="meta">Version du {new Date(__BUILD__).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>

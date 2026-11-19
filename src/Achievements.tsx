@@ -4,7 +4,7 @@ import { AlarmClock, Castle, Hourglass, Medal, ScrollText, Star, Compass, Skull,
 import { burst } from './model/celebrate';
 import type { Ach } from './data/jeu/succes';
 import { GAME_VERSION } from './data/jeu/donjons';
-import { achKey, achProgress, almostDone, daysUntil, EVENTS, norm, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
+import { achKey, achProgress, almostDone, eventStatus, norm, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
 import { catalog } from './model/catalog';
 import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
@@ -165,15 +165,6 @@ function Ranking({ d, profileId, isDone }: { d: AchData; profileId: number; isDo
       )}
     </section>
   );
-}
-
-export function eventStatus(d: AchData, profileId: number, isDone: IsDone) {
-  return EVENTS.map(e => {
-    const cat = d.cats.find(c => c.name === e.cat);
-    const list = cat ? d.list.filter(a => a.c === cat.id || d.catOf.get(a.c)?.parent === cat.id) : [];
-    const left = list.filter(a => !isDone(profileId, achKey(a.id)));
-    return { e, list, left, pts: left.reduce((s, a) => s + a.p, 0), days: daysUntil(e) };
-  }).sort((a, b) => a.days - b.days);
 }
 
 function Alerts({ d, profileId, isDone }: { d: AchData; profileId: number; isDone: IsDone }) {

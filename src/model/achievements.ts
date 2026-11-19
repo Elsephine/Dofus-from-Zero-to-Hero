@@ -110,3 +110,13 @@ export function daysUntil(e: SeasonEvent, now = new Date()) {
   }
   return 999;
 }
+
+export function eventStatus(d: AchData, profileId: number, isDone: IsDone) {
+  return EVENTS.map(e => {
+    const cat = d.cats.find(c => c.name === e.cat);
+    const list = cat ? d.list.filter(a => a.c === cat.id || d.catOf.get(a.c)?.parent === cat.id) : [];
+    const left = list.filter(a => !isDone(profileId, achKey(a.id)));
+    return { e, list, left, pts: left.reduce((s, a) => s + a.p, 0), days: daysUntil(e) };
+  }).sort((a, b) => a.days - b.days);
+}
+

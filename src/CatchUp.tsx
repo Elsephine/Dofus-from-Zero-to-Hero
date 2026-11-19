@@ -9,13 +9,11 @@ import { profiles } from './model/profiles';
 import { teamInfo, toggle } from './model/progress';
 import { achKey, useAchData } from './model/achievements';
 import { burst } from './model/celebrate';
-import { dungeons } from './data/jeu/donjons';
 
 type IsDone = (p: number, id: string) => boolean;
 interface Step { item: ItemView; dofus: string; image?: string | null; order: number }
 const avatar = (img: string) => `${import.meta.env.BASE_URL}persos/${img}`;
 const eggImg = (f?: string | null) => (f ? `${import.meta.env.BASE_URL}dofus/${f}` : undefined);
-const DJ_ACH = new Map(dungeons.flatMap(d => d.ach.map(a => [a.id, { name: a.name, pts: a.pts }] as const)));
 
 /** Toutes les étapes des Dofus, dans l'ordre, sans doublon (une même quête peut servir à plusieurs Dofus). */
 function allSteps(profileId: number, isDone: IsDone): Step[] {
@@ -57,8 +55,8 @@ export function CatchUp({ profileId, isDone, onOpenDofus }: { profileId: number;
   };
   const gaps = new Map(mates.map(m => [m.id, gap(m.id)]));
   const g = gaps.get(mate.id)!;
-  // Succès que le coéquipier a et pas moi (tous les succès si les données sont chargées, sinon ceux de donjon).
-  const achBehind = (ach ? ach.list.map(a => ({ id: a.id, name: a.n, pts: a.p })) : [...DJ_ACH].map(([id, a]) => ({ id, ...a })))
+  // Succès que le coéquipier a et pas moi (une fois les données de succès chargées).
+  const achBehind = (ach ? ach.list.map(a => ({ id: a.id, name: a.n, pts: a.p })) : [])
     .filter(a => isDone(mate.id, achKey(a.id)) && !isDone(profileId, achKey(a.id)));
   // À faire ensemble : prochaines étapes que personne n'a faites, dans les Dofus déjà commencés par l'un de nous.
   const everyone = [profileId, ...mates.map(m => m.id)];

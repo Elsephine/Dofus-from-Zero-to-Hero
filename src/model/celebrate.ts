@@ -1,5 +1,8 @@
 // Célébrations : confettis rouges et or (quête / succès validés) et grande annonce « Dofus obtenu ! ».
-import confetti from 'canvas-confetti';
+import type { Options } from 'canvas-confetti';
+// La bibliothèque de confettis n'est chargée qu'à la première célébration.
+let lib: Promise<(o: Options) => unknown> | null = null;
+const confetti = (o: Options) => { lib ??= import('canvas-confetti').then(m => m.default as (o: Options) => unknown); void lib.then(f => f(o)); };
 import { useSyncExternalStore } from 'react';
 
 const COLORS = ['#c8283c', '#e2475b', '#d8ad62', '#f0cf8c', '#ffffff'];
@@ -10,7 +13,7 @@ export function burst(el?: Element | null, big = false) {
   if (calm()) return;
   const r = el?.getBoundingClientRect();
   const origin = r ? { x: (r.left + r.width / 2) / innerWidth, y: (r.top + r.height / 2) / innerHeight } : { x: .5, y: .6 };
-  void confetti({ particleCount: big ? 90 : 28, spread: big ? 80 : 50, startVelocity: big ? 38 : 22, scalar: .8, ticks: 120, origin, colors: COLORS, disableForReducedMotion: true });
+  confetti({ particleCount: big ? 90 : 28, spread: big ? 80 : 50, startVelocity: big ? 38 : 22, scalar: .8, ticks: 120, origin, colors: COLORS, disableForReducedMotion: true });
 }
 
 let trophy: { name: string; image?: string | null } | null = null;
@@ -20,8 +23,8 @@ export function celebrateDofus(name: string, image?: string | null) {
   if (calm()) return;
   const end = Date.now() + 1600;
   const frame = () => {
-    void confetti({ particleCount: 6, angle: 60, spread: 60, origin: { x: 0, y: .7 }, colors: COLORS });
-    void confetti({ particleCount: 6, angle: 120, spread: 60, origin: { x: 1, y: .7 }, colors: COLORS });
+    confetti({ particleCount: 6, angle: 60, spread: 60, origin: { x: 0, y: .7 }, colors: COLORS });
+    confetti({ particleCount: 6, angle: 120, spread: 60, origin: { x: 1, y: .7 }, colors: COLORS });
     if (Date.now() < end) requestAnimationFrame(frame);
   };
   frame();
