@@ -141,15 +141,33 @@ async function doSync() {
   save(); emit();
 }
 
-export function toggle(profile: number, id: string, done?: boolean) {
+// Journal des dernières actions (sur cet appareil), pour revoir et annuler une coche faite par erreur.
+export interface HistoryEntry { at: string; profile: number; id: string; done: boolean; prev: boolean }
+const LS_HISTORY = 'fzth:v2:history';
+let history: HistoryEntry[] = readLS(LS_HISTORY, []);
+export const getHistory = (profile: number) => history.filter(h => h.profile === profile);
+
+export function toggle(profile: number, id: string, done?: boolean, opts: { silent?: boolean } = {}) {
   const k = key(profile, id);
   const cur = entries.get(k);
   const next = done ?? !cur?.done;
   if (done !== undefined && cur && cur.done === next) return; // déjà dans cet état
-  entries.set(k, { done: next, at: new Date().toISOString() });
+  const at = new Date().toISOString();
+  entries.set(k, { done: next, at });
   pending.add(k);
+  if (!opts.silent && !id.startsWith('choice:')) {
+    history = [{ at, profile, id, done: next, prev: !!cur?.done }, ...history].slice(0, 150);
+    writeLS(LS_HISTORY, history);
+  }
   save(); emit();
   void sync();
+}
+
+/** Annule une action du journal : remet l'objectif dans l'état d'avant et retire la ligne. */
+export function undo(h: HistoryEntry) {
+  toggle(h.profile, h.id, h.prev, { silent: true });
+  history = history.filter(x => x !== h && !(x.at === h.at && x.id === h.id && x.profile === h.profile));
+  writeLS(LS_HISTORY, history); emit();
 }
 
 export async function setShare(p: number, shared: boolean) {

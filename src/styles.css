@@ -29,7 +29,7 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
 .home-link { background: none; border: none; padding: 0; color: var(--gold2); font: inherit; }
 .top .sym { color: var(--world-accent); }
 .profiles { display: flex; gap: 6px; flex: 1; }
-.me { display: flex; align-items: center; gap: 8px; flex: 1; }
+.me { display: flex; align-items: center; gap: 8px; }
 .me small { color: var(--muted); }
 .me button { font-size: 12px; padding: 4px 8px; }
 .home h2 small { font: 12px system-ui, sans-serif; color: var(--muted); margin-left: 6px; }
@@ -306,3 +306,67 @@ body.pip { margin: 0; }
 .toast { display: flex; align-items: center; gap: 10px; font-size: 13px; box-shadow: 0 8px 24px #0008; animation: toast-in .3s ease; }
 .toast button { padding: 2px 6px; }
 @keyframes toast-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* En-tête : recherche, journal, menu du personnage */
+.top { gap: 8px; }
+.mainnav { flex-wrap: wrap; }
+.mainnav .ic { margin-right: 4px; }
+.dd { position: relative; }
+.dd-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 25; display: flex; flex-direction: column; gap: 6px; min-width: 260px; box-shadow: 0 12px 30px #000a; }
+.dd-menu > button { text-align: left; }
+.search { flex: 1; min-width: 160px; max-width: 360px; margin-left: auto; }
+.search > input { width: 100%; font: inherit; padding: 6px 10px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.search > input:focus { outline: none; border-color: var(--world-accent); }
+.search-results { left: 0; right: auto; width: min(520px, 92vw); max-height: 70vh; overflow: auto; }
+.sr-dofus { font-weight: 600; }
+.sr-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px; border-radius: 8px; background: #ffffff06; }
+.sr-row label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.sr-row.done label span { text-decoration: line-through; opacity: .5; }
+.sr-dofus-list { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 24px; }
+.sr-dofus-list .chip { border: none; cursor: pointer; }
+.sr-dofus-list .chip:hover { color: var(--world-bright); }
+.journal { width: min(440px, 92vw); max-height: 70vh; overflow: auto; }
+.journal h3, .needs h3 { color: var(--gold); font-size: 15px; }
+.jr-row { display: grid; grid-template-columns: 70px 16px 1fr auto; gap: 6px; align-items: center; font-size: 13px; padding: 3px 4px; border-radius: 6px; }
+.jr-row:nth-child(even) { background: #ffffff06; }
+.jr-row .t { color: var(--muted); font-size: 11px; }
+.jr-row .a.on { color: var(--green); } .jr-row .a.off { color: #ff9f9f; }
+.jr-row button { padding: 1px 7px; }
+.me-btn { display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border-radius: 22px; }
+.me-btn small { color: var(--muted); }
+
+/* Résumé repliable */
+.needs summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.needs summary::-webkit-details-marker { display: none; }
+.needs summary::before { content: '▸'; color: var(--gold); transition: transform .2s; }
+.needs[open] summary::before { transform: rotate(90deg); }
+.needs[open] { max-height: 170px; }
+
+/* Mode compact : seulement Ocre, Tour du monde, donjons et groupe */
+.compact .quest .chips .chip { display: none; }
+.compact .quest .chips .chip.ocre, .compact .quest .chips .chip.tdm, .compact .quest .chips .chip.dj, .compact .quest .chips .chip.f-donjon,
+.compact .quest .chips .chip.t-combat-groupe, .compact .quest .chips .chip.t-combat-vague-groupe, .compact .quest .chips .chip.t-aide-personnes { display: inline; }
+.compact .quest .hint { display: none; }
+.compact .quest .line { padding: 2px 4px; }
+
+/* Accueil : filtres */
+.home-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.home-head h2 { margin: 0; }
+.home-head small { color: var(--muted); }
+
+/* Téléphone : onglets en barre fixe en bas, en-tête allégé */
+@media (max-width: 900px) {
+  .app:not(.landing) { padding-bottom: 70px; }
+  .mainnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    background: var(--bg); border-top: 1px solid var(--world-border); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+  .mainnav button { border: none; background: none; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 11px; padding: 4px 0; color: var(--muted); }
+  .mainnav button.on { color: var(--world-bright); }
+  .mainnav .ic { font-size: 18px; margin: 0; }
+  .top h1 { font-size: 18px; }
+  .top .sync { display: none; }
+  .me-name { display: none; }
+  .search { order: 10; flex-basis: 100%; max-width: none; }
+  .search-results { width: calc(100vw - 20px); }
+  .dd-menu { right: -4px; }
+  .toasts { bottom: 80px; }
+}

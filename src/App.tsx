@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
-import { hasCode, isUnlocked, login, logout, toggle, useProgress, type SyncStatus } from './model/progress';
+import { getHistory, hasCode, isUnlocked, login, logout, toggle, undo, useProgress, type SyncStatus } from './model/progress';
+import { labelOf, search } from './model/search';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
@@ -61,21 +62,17 @@ export function App() {
       <header className="top">
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax', 'team'].includes(view) ? 'on' : ''} onClick={() => setView('home')}>Dofus</button>
-          <button className={view === 'jobs' ? 'on' : ''} onClick={() => setView('jobs')}>Métiers & ressources</button>
-          <button className={view === 'team' ? 'on' : ''} onClick={() => setView('team')}>Équipe</button>
-          <button className={view === 'almanax' ? 'on' : ''} onClick={() => setView('almanax')}>Almanax</button>
-          <button className={view === 'tools' ? 'on' : ''} onClick={() => setView('tools')}>Outils</button>
+          <button className={!['tools', 'jobs', 'almanax', 'team'].includes(view) ? 'on' : ''} onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
+          <button className={view === 'jobs' ? 'on' : ''} onClick={() => setView('jobs')}><span className="ic">⚒</span><span className="lbl">Métiers</span></button>
+          <button className={view === 'team' ? 'on' : ''} onClick={() => setView('team')}><span className="ic">👥</span><span className="lbl">Équipe</span></button>
+          <button className={view === 'almanax' ? 'on' : ''} onClick={() => setView('almanax')}><span className="ic">📅</span><span className="lbl">Almanax</span></button>
+          <button className={view === 'tools' ? 'on' : ''} onClick={() => setView('tools')}><span className="ic">🧰</span><span className="lbl">Outils</span></button>
         </nav>
-        <div className="me">
-          <img className="avatar big" src={`${import.meta.env.BASE_URL}persos/${profile.image}`} alt="" />
-          <span><strong>{profile.name}</strong> <small>{profile.classe}</small></span>
-          <button className="primary" onClick={() => void openOverlay(profile.id, info?.id ?? lastDofus)} title="Mini-fenêtre à garder à côté de Dofus">⧉ Overlay</button>
-          <button onClick={() => setActive(null)} title="Revenir au choix du personnage">Changer</button>
-          <button onClick={() => { logout(profile.id); setActive(null); }} title="Oublier le code sur cet appareil">Se déconnecter</button>
-        </div>
+        <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
+        <Journal profileId={profile.id} />
         <Bell onOpenTools={() => setView('tools')} />
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
+        <MeMenu profile={profile} onOverlay={() => void openOverlay(profile.id, info?.id ?? lastDofus)} onChange={() => setActive(null)} onLogout={() => { logout(profile.id); setActive(null); }} />
       </header>
       <Toasts />
 
@@ -119,18 +116,27 @@ function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: 
 const img = (file: string | null) => (file ? `${import.meta.env.BASE_URL}dofus/${file}` : undefined);
 
 function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
-  const finished = catalog.filter(raw => { const v = viewFor(raw, profileId, isDone); return v.itemIds.length && v.itemIds.every(id => isDone(profileId, id)); }).length;
+  const [filter, setFilter] = remember<'all' | 'doing' | 'todo' | 'done'>('fzth:v2:homeFilter', 'all');
+  const stats = dofusInfo.map(d => {
+    const raw = catalog.find(x => x.id === d.id);
+    const c = raw && viewFor(raw, profileId, isDone);
+    const done = c ? c.itemIds.filter(id => isDone(profileId, id)).length : 0;
+    const pct = c && c.itemIds.length ? Math.round((done / c.itemIds.length) * 100) : 0;
+    const next = c?.sections.flatMap(s => s.items).find(i => !isDone(profileId, i.id));
+    return { d, c, pct, done, next, state: pct === 100 ? 'done' : done > 0 ? 'doing' : 'todo' };
+  });
+  const finished = stats.filter(x => x.state === 'done').length;
+  const FILTERS: [typeof filter, string][] = [['all', 'Tous'], ['doing', 'En cours'], ['todo', 'Pas commencés'], ['done', 'Terminés']];
   return (
     <main className="home panel">
-      <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
+      <div className="home-head">
+        <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
+        <div className="row">{FILTERS.map(([k, l]) => <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l} <small>{k === 'all' ? stats.length : stats.filter(x => x.state === k).length}</small></button>)}</div>
+      </div>
       <div className="grid">
-        {dofusInfo.map(d => {
-          const raw = catalog.find(x => x.id === d.id);
-          const c = raw && viewFor(raw, profileId, isDone);
-          const done = c ? c.itemIds.filter(id => isDone(profileId, id)).length : 0;
-          const pct = c && c.itemIds.length ? Math.round((done / c.itemIds.length) * 100) : 0;
+        {stats.filter(x => filter === 'all' || x.state === filter).map(({ d, c, pct, next }) => {
           return (
-            <button key={d.id} className={`egg${c ? '' : ' soon'}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={d.name}>
+            <button key={d.id} className={`egg${c ? '' : ' soon'}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={next ? `${d.name}\nProchaine : ${next.name}` : d.name}>
               {d.image && <img src={img(d.image)} alt="" loading="lazy" />}
               <span className="name">{d.name}</span>
               {c ? <span className="ring"><span style={{ width: `${pct}%` }} /></span> : <span className="chip">bientôt</span>}
@@ -205,11 +211,15 @@ function QuestList({ dofus, profileId, hideDone, setHideDone, isDone }: {
   dofus: DofusView; profileId: number; hideDone: boolean; setHideDone: (v: boolean) => void; isDone: (p: number, id: string) => boolean;
 }) {
   const next = dofus.sections.flatMap(s => s.items).find(i => !isDone(profileId, i.id));
+  const [compact, setCompact] = remember<boolean>('fzth:v2:compact', false);
   return (
-    <section className="detail panel">
+    <section className={`detail panel${compact ? ' compact' : ''}`}>
       <div className="detail-head">
         <p className="meta">{next ? <>Prochaine : <strong>{next.name}</strong></> : <strong>Tout est fait !</strong>}</p>
-        <label className="toggle"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Masquer les terminées</label>
+        <div className="row">
+          <label className="toggle"><input type="checkbox" checked={compact} onChange={e => setCompact(e.target.checked)} /> Compact</label>
+          <label className="toggle"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Masquer les terminées</label>
+        </div>
       </div>
       <div className="sections">
         {dofus.sections.map(s => {
@@ -233,9 +243,10 @@ const FAMILIES: [IconFamily, string][] = [['combat', 'Combats'], ['donjon', 'Don
 function Needs({ dofus, profileId, isDone }: { dofus: DofusView; profileId: number; isDone: (p: number, id: string) => boolean }) {
   const req = requirements(dofus, id => isDone(profileId, id));
   const any = FAMILIES.some(([f]) => req[f].length);
+  const [open, setOpen] = remember<boolean>('fzth:v2:needsOpen', true);
   return (
-    <div className="needs">
-      <h3>Ce que demande ce Dofus <small>(quêtes restantes)</small></h3>
+    <details className="needs" open={open} onToggle={e => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary><h3>Ce que demande ce Dofus <small>(quêtes restantes)</small></h3></summary>
       {!any && <p className="meta">Plus rien à prévoir.</p>}
       {FAMILIES.map(([f, title]) => req[f].length ? (
         <div key={f} className="need-row">
@@ -247,7 +258,7 @@ function Needs({ dofus, profileId, isDone }: { dofus: DofusView; profileId: numb
           ))}
         </div>
       ) : null)}
-    </div>
+    </details>
   );
 }
 
@@ -289,11 +300,96 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
   );
 }
 
+// Petit menu déroulant générique : se ferme en cliquant ailleurs.
+function useDropdown() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.dd')) setOpen(false); };
+    document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  return [open, setOpen] as const;
+}
+
+function MeMenu({ profile, onOverlay, onChange, onLogout }: { profile: (typeof profiles)[number]; onOverlay: () => void; onChange: () => void; onLogout: () => void }) {
+  const [open, setOpen] = useDropdown();
+  return (
+    <div className="dd me-menu">
+      <button className="me-btn" onClick={() => setOpen(!open)} title="Mon personnage">
+        <img className="avatar big" src={`${import.meta.env.BASE_URL}persos/${profile.image}`} alt="" />
+        <span className="me-name"><strong>{profile.name}</strong> <small>{profile.classe}</small></span> ▾
+      </button>
+      {open && (
+        <div className="dd-menu panel">
+          <button className="primary" onClick={() => { onOverlay(); setOpen(false); }}>⧉ Ouvrir l’overlay à côté de Dofus</button>
+          <button onClick={onChange}>⇄ Changer de personnage</button>
+          <button onClick={onLogout}>⏻ Se déconnecter (oublier le code ici)</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SearchBox({ profileId, isDone, onOpenDofus }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpenDofus: (id: string) => void }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useDropdown();
+  const r = useMemo(() => search(q), [q]);
+  return (
+    <div className="dd search">
+      <input type="search" value={q} placeholder="🔎 Rechercher une quête…" onChange={e => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
+        onKeyDown={e => { if (e.key === 'Escape') { setQ(''); setOpen(false); } }} />
+      {open && q.trim().length >= 2 && (
+        <div className="dd-menu panel search-results">
+          {r.dofus.map(d => <button key={d.id} className="sr-dofus" onClick={() => { onOpenDofus(d.id); setOpen(false); setQ(''); }}>🥚 {d.name}</button>)}
+          {r.quests.map(h => {
+            const done = isDone(profileId, h.item.id);
+            return (
+              <div key={h.item.id} className={`sr-row${done ? ' done' : ''}`}>
+                <label><input type="checkbox" checked={done} onChange={() => toggle(profileId, h.item.id)} /> <span>{h.item.name}</span></label>
+                {h.item.url && <a href={h.item.url} target="_blank" rel="noreferrer" title="Dofus pour les Noobs">↗</a>}
+                <div className="sr-dofus-list">{h.dofus.map(d => <button key={d.id} className="chip" onClick={() => { onOpenDofus(d.id); setOpen(false); setQ(''); }} title={d.section}>{d.name}</button>)}</div>
+              </div>
+            );
+          })}
+          {!r.quests.length && !r.dofus.length && <p className="meta">Aucun résultat.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Journal({ profileId }: { profileId: number }) {
+  useProgress(); // se met à jour à chaque coche
+  const [open, setOpen] = useDropdown();
+  const list = getHistory(profileId).slice(0, 40);
+  const time = (iso: string) => { const d = new Date(iso); const today = new Date().toDateString() === d.toDateString(); return d.toLocaleString('fr-FR', today ? { hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+  return (
+    <div className="dd">
+      <button onClick={() => setOpen(!open)} title="Dernières actions">🕘</button>
+      {open && (
+        <div className="dd-menu panel journal">
+          <h3>Dernières actions</h3>
+          {list.map(h => (
+            <div key={h.at + h.id} className="jr-row">
+              <span className="t">{time(h.at)}</span>
+              <span className={`a ${h.done ? 'on' : 'off'}`}>{h.done ? '✓' : '✗'}</span>
+              <span className="l">{labelOf(h.id)}</span>
+              <button onClick={() => undo(h)} title="Annuler cette action">↶</button>
+            </div>
+          ))}
+          {!list.length && <p className="meta">Aucune action pour l’instant.</p>}
+          <p className="meta small">Gardé sur cet appareil.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Bell({ onOpenTools }: { onOpenTools: () => void }) {
   const { unseen, permission } = useNotifications();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDropdown();
   return (
-    <div className="bell-wrap">
+    <div className="bell-wrap dd">
       <button className={`bell${unseen.length ? ' has' : ''}`} onClick={() => setOpen(!open)} title="Notifications de l’équipe">🔔{unseen.length > 0 && <span className="badge">{unseen.length}</span>}</button>
       {open && (
         <div className="bell-menu panel">
@@ -353,7 +449,7 @@ export function QuestRow({ item, done, grouped, onToggle }: { item: ItemView; do
           {item.tag && <span className="chip">{item.tag}</span>}
           {item.objectives?.filter(o => !(o.type === 'donjon' && item.dungeon?.name)).map((o, k) => {
             const ic = iconInfo(o.type);
-            return <span key={k} className={`chip obj f-${ic.family}`} title={ic.label}>{ic.short}{o.count ? ` ×${o.count}` : ''}{o.label ? ` · ${o.label}` : ''}</span>;
+            return <span key={k} className={`chip obj f-${ic.family} t-${o.type}`} title={ic.label}>{ic.short}{o.count ? ` ×${o.count}` : ''}{o.label ? ` · ${o.label}` : ''}</span>;
           })}
           {item.notes?.map((n, k) => <span key={'n' + k} className="chip note">{n}</span>)}
           {item.level !== undefined && <span className="chip lvl">niv. {item.level}</span>}
