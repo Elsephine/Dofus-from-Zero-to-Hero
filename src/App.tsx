@@ -14,6 +14,8 @@ import { onNewMessages, post as postMessage, useMessages, watchMessages } from '
 import { Clock } from './Clock';
 import { GoalBanner } from './Goals';
 import { watchGoals } from './model/goals';
+import { setPresencePage, watchTeamLive } from './model/teamlive';
+import { OnlineNow } from './TeamLive';
 import { Jobs } from './Jobs';
 import { Almanax } from './Almanax';
 import { Team } from './Team';
@@ -38,7 +40,12 @@ export function App() {
   useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
-  useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); }, [profile?.id]);
+  useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); watchTeamLive(profile?.id ?? null); }, [profile?.id]);
+  // Page affichée, visible par les coéquipiers (« Volrod · Dofus Cauchemar »).
+  useEffect(() => {
+    const labels: Record<string, string> = { home: 'Accueil', jobs: 'Métiers', team: 'Équipe', almanax: 'Almanax', messages: 'Messages', tools: 'Outils' };
+    setPresencePage(labels[view] ?? dofusInfo.find(d => d.id === view)?.name ?? 'Site');
+  }, [view]);
   // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
   useEffect(() => { const off = onNewMessages(ms => {
     if (view === 'messages') return;
@@ -91,6 +98,7 @@ export function App() {
           <button className={view === 'tools' ? 'on' : ''} title="Outils" onClick={() => setView('tools')}><span className="ic">🧰</span><span className="lbl">Outils</span></button>
         </nav>
         <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
+        <OnlineNow profileId={profile.id} />
         <Clock />
         <Journal profileId={profile.id} />
         <Bell onOpenTools={() => setView('tools')} />

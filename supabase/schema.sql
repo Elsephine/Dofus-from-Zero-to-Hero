@@ -279,3 +279,82 @@ end $$;
 
 revoke all on function public.fzth_get(integer, text), public.fzth_team_get(integer, text) from public;
 grant execute on function public.fzth_get(integer, text), public.fzth_team_get(integer, text) to anon;
+
+-- ---------- Présence (qui a le site ouvert, et sur quelle page) ----------
+create table if not exists public.fzth_presence (
+  profile_id integer primary key check (profile_id between 0 and 2),
+  page text check (page is null or length(page) <= 80),
+  last_seen timestamptz not null default now()
+);
+alter table public.fzth_presence enable row level security;
+revoke all on public.fzth_presence from anon, authenticated;
+
+create or replace function public.fzth_ping(p_profile integer, p_code text, p_page text)
+returns table (profile_id integer, page text, last_seen timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  insert into fzth_presence as t (profile_id, page, last_seen) values (p_profile, left(p_page, 80), now())
+  on conflict on constraint fzth_presence_pkey do update set page = excluded.page, last_seen = now();
+  return query select x.profile_id, x.page, x.last_seen from fzth_presence x;
+end $$;
+
+-- ---------- Disponibilités de la semaine : créneaux d'une heure, en heure de Paris (« jour-heure », ex. « 4-21 » = vendredi 21 h) ----------
+create table if not exists public.fzth_avail (
+  profile_id integer primary key check (profile_id between 0 and 2),
+  slots jsonb not null default '[]'::jsonb check (jsonb_typeof(slots) = 'array' and jsonb_array_length(slots) <= 168),
+  note text check (note is null or length(note) <= 200),
+  updated_at timestamptz not null default now()
+);
+alter table public.fzth_avail enable row level security;
+revoke all on public.fzth_avail from anon, authenticated;
+
+create or replace function public.fzth_avail_list(p_profile integer, p_code text)
+returns table (profile_id integer, slots jsonb, note text, updated_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select a.profile_id, a.slots, a.note, a.updated_at from fzth_avail a;
+end $$;
+
+create or replace function public.fzth_avail_set(p_profile integer, p_code text, p_slots jsonb, p_note text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  insert into fzth_avail as t (profile_id, slots, note, updated_at) values (p_profile, p_slots, p_note, now())
+  on conflict (profile_id) do update set slots = excluded.slots, note = excluded.note, updated_at = now();
+end $$;
+
+-- ---------- Répartition de la récolte : « je m'occupe de cette ressource » ----------
+create table if not exists public.fzth_claim (
+  item_id text primary key check (length(item_id) between 1 and 200),
+  profile_id integer not null check (profile_id between 0 and 2),
+  created_at timestamptz not null default now()
+);
+alter table public.fzth_claim enable row level security;
+revoke all on public.fzth_claim from anon, authenticated;
+
+create or replace function public.fzth_claim_list(p_profile integer, p_code text)
+returns table (item_id text, profile_id integer, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select c.item_id, c.profile_id, c.created_at from fzth_claim c;
+end $$;
+
+-- p_claim = true : prendre (si libre ou déjà à moi) ; false : relâcher (seulement si c'est à moi).
+create or replace function public.fzth_claim_set(p_profile integer, p_code text, p_item text, p_claim boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  if p_claim then
+    insert into fzth_claim (item_id, profile_id) values (p_item, p_profile) on conflict (item_id) do nothing;
+  else
+    delete from fzth_claim where item_id = p_item and profile_id = p_profile;
+  end if;
+end $$;
+
+revoke all on function public.fzth_ping(integer, text, text), public.fzth_avail_list(integer, text), public.fzth_avail_set(integer, text, jsonb, text),
+  public.fzth_claim_list(integer, text), public.fzth_claim_set(integer, text, text, boolean) from public;
+grant execute on function public.fzth_ping(integer, text, text), public.fzth_avail_list(integer, text), public.fzth_avail_set(integer, text, jsonb, text),
+  public.fzth_claim_list(integer, text), public.fzth_claim_set(integer, text, text, boolean) to anon;

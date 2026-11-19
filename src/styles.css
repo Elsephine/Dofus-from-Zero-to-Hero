@@ -508,3 +508,58 @@ body.pip { margin: 0; }
 .team-note .warn { display: inline; }
 .mode-switch { flex-wrap: nowrap; }
 .job-stats .mode-switch { background: none; border: none; padding: 0; flex-direction: row; min-width: 0; }
+
+/* En ligne */
+.on-av { position: relative; display: inline-flex; }
+.on-av i { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; background: #4ade80; border: 2px solid var(--bg); box-shadow: 0 0 6px #4ade80; }
+.online-now { display: flex; gap: 2px; padding: 2px 6px; border: 1px solid #4ade8055; border-radius: 20px; }
+.online-now img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; }
+.member.online { border-color: #4ade8088; }
+.team-tabs { margin: 4px 0; }
+
+/* Disponibilités */
+.avail, .harvest, .dj-ach { display: flex; flex-direction: column; gap: 8px; }
+.avail h2, .harvest h2, .dj-ach h2 { font-size: 20px; color: var(--gold2); }
+.avail-grid { display: grid; grid-template-columns: 38px repeat(7, 1fr); gap: 2px; user-select: none; }
+.avail-grid .dh { text-align: center; font-size: 12px; color: var(--gold); }
+.avail-grid .hh { font-size: 10px; color: var(--muted); text-align: right; padding-right: 4px; line-height: 18px; }
+.avail-grid .cell { height: 18px; padding: 0 3px; border-radius: 3px; border: 1px solid #ffffff10; background: #ffffff05; display: flex; gap: 2px; align-items: center; justify-content: center; }
+.avail-grid .cell.me { border-color: var(--world-accent); }
+.avail-grid .cell.all { background: #d8ad6244; border-color: var(--gold); }
+.avail-grid .cell i, .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--world-accent); display: inline-block; }
+.legend { gap: 12px; font-size: 12px; color: var(--muted); }
+.legend .lg { display: inline-flex; gap: 5px; align-items: center; }
+.legend .all i { background: var(--gold); border-radius: 2px; }
+.avail .note { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.avail .note input, .dj-search { flex: 1; font: inherit; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.common h3 { color: var(--gold); font-size: 15px; } .common p { margin: 3px 0; text-transform: none; }
+
+
+/* Récolte */
+.harvest-group h3 { color: var(--gold); font-size: 15px; margin: 6px 0 4px; }
+.harvest-group ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 4px; }
+.harvest-group li { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; background: #ffffff06; font-size: 13px; }
+.harvest-group .rname { flex: 1; }
+.claim-btn { padding: 1px 7px; font-size: 12px; }
+.claim-btn.mine { border-color: var(--world-accent); color: var(--world-bright); }
+.claim-btn.other img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; border: 1px solid var(--gold); }
+
+/* Succès de donjon */
+.dj-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dj-list > li { border: 1px solid var(--line); border-radius: 10px; background: #0002; }
+.dj-list > li.ours { border-color: var(--gold); }
+.dj-head { width: 100%; display: flex; gap: 8px; align-items: center; background: none; border: none; text-align: left; padding: 8px 10px; }
+.dj-head .meta { margin-left: auto; }
+.ach-list { list-style: none; margin: 0; padding: 0 10px 8px; display: flex; flex-direction: column; gap: 3px; }
+.ach-list li { display: flex; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 6px; background: #ffffff06; font-size: 13px; }
+.ach-list li label { flex: 1; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.ach-list li.done label strong { text-decoration: line-through; opacity: .6; }
+.ach-list .pts { color: var(--gold2); }
+.ach-list .who { display: flex; gap: 4px; font-size: 11px; } .ach-list .who .ok { color: var(--green); } .ach-list .who .todo { color: #ff9f9f; }
+@media (max-width: 900px) { .avail-grid .cell { height: 22px; } .online-now { display: none; } }
+
+[data-world="sram"] > i, i[data-world="sram"] { background: #b7a0ed !important; }
+[data-world="feca"] > i, i[data-world="feca"] { background: #7bd7d7 !important; }
+[data-world="elio"] > i, i[data-world="elio"] { background: #ffb67b !important; }
+.legend .all i { background: var(--gold) !important; }
+.member.online .on-av i, .online-now .on-av i { background: #4ade80 !important; }

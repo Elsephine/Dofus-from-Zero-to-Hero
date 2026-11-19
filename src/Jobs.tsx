@@ -6,20 +6,10 @@ import { profiles } from './model/profiles';
 import { post } from './model/messages';
 import { Mates, OfferButton, ResIcon } from './Mates';
 
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-const key = (name: string) => 'job:' + norm(name).replace(/[^a-z0-9]+/g, '-');
-
-// Une ressource demandée par plusieurs métiers n'apparaît qu'une fois dans la liste globale (quantités additionnées).
-function allItems() {
-  const m = new Map<string, { name: string; qty: number; jobs: string[] }>();
-  for (const j of jobs) for (const [n, q] of j.items) {
-    const k = norm(n);
-    if (!m.has(k)) m.set(k, { name: n, qty: 0, jobs: [] });
-    const e = m.get(k)!; e.qty += q; e.jobs.push(j.name);
-  }
-  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-}
-const ALL = allItems();
+import { ALL_JOB_RES, jobKey } from './model/jobs';
+import { ClaimButton } from './TeamLive';
+const ALL = ALL_JOB_RES;
+const key = jobKey;
 const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
 
 export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
@@ -76,6 +66,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
         <span className="stock">
           {counted.filter(p => p.id !== profileId && (qtyOf(p.id, k) ?? 0) > 0).map(p => <span key={p.id} className="st-m" title={`${p.name} en a ${qtyOf(p.id, k)!.toLocaleString('fr-FR')}`}><img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" />{qtyOf(p.id, k)!.toLocaleString('fr-FR')}</span>)}
         </span>
+        {!ok && <ClaimButton itemId={k} profileId={profileId} />}
         <span className="bar"><span style={{ width: `${Math.min(100, (have / Math.max(1, need)) * 100)}%` }} /></span>
       </div>
     );

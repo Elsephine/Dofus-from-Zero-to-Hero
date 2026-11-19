@@ -6,14 +6,19 @@ import { profiles } from './model/profiles';
 import { setShare, teamInfo } from './model/progress';
 import { iconInfo } from './model/icons';
 import { Goals } from './Goals';
+import { Availability, DungeonAchievements, Harvest, MemberStatus } from './TeamLive';
 
 const GROUP = new Set(['combat-groupe', 'combat-vague-groupe', 'donjon', 'aide-personnes']);
 const isGroup = (i: ItemView) => !!i.dungeon?.name || (i.objectives ?? []).some(o => GROUP.has(o.type));
+
+const TABS: [string, string][] = [['goals', '🎯 Objectifs'], ['avail', '🗓 Disponibilités'], ['harvest', '🌾 Récolte'], ['ach', '🏆 Succès donjons'], ['progress', '📊 Progression']];
 
 export function Team({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
   const { team, teamLoaded } = teamInfo();
   const [dofusId, setDofusId] = useState(() => { try { return localStorage.getItem('fzth:v2:teamDofus') ?? 'dom-de-pin'; } catch { return 'dom-de-pin'; } });
   const [onlyGroup, setOnlyGroup] = useState(true);
+  const [tab, setTabState] = useState<string>(() => { try { return localStorage.getItem('fzth:v2:teamTab') ?? 'goals'; } catch { return 'goals'; } });
+  const setTab = (t: string) => { setTabState(t); try { localStorage.setItem('fzth:v2:teamTab', t); } catch { /* ignore */ } };
   const [err, setErr] = useState('');
   const pick = (id: string) => { setDofusId(id); try { localStorage.setItem('fzth:v2:teamDofus', id); } catch { /* ignore */ } };
   // Membres visibles : moi + ceux qui partagent.
@@ -44,21 +49,20 @@ export function Team({ profileId, isDone }: { profileId: number; isDone: (p: num
         <h2>Équipe</h2>
         <label className="toggle share"><input type="checkbox" checked={!!team[profileId]} onChange={toggleShare} disabled={!teamLoaded} /> Partager ma progression avec l’équipe (lecture seule)</label>
       </div>
-      <Goals profileId={profileId} isDone={isDone} />
+      {err && <p className="warn">{err}</p>}
+      <MemberStatus profileId={profileId} />
+      <nav className="tabs always team-tabs">
+        {TABS.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
+      </nav>
+      {tab === 'goals' && <Goals profileId={profileId} isDone={isDone} />}
+      {tab === 'avail' && <Availability profileId={profileId} />}
+      {tab === 'harvest' && <Harvest profileId={profileId} />}
+      {tab === 'ach' && <DungeonAchievements profileId={profileId} isDone={isDone} />}
+      {tab === 'progress' && <>
       <h2 className="sub">Progression par Dofus</h2>
       {!teamLoaded && <p className="meta">Le partage passe par le serveur : il s’active une fois le site en ligne et synchronisé.</p>}
-      {err && <p className="warn">{err}</p>}
-
       <div className="members">
-        {profiles.map(p => {
-          const visible = members.includes(p);
-          return (
-            <div key={p.id} className={`member${visible ? '' : ' hidden-member'}`} data-world={p.world}>
-              <img className="avatar big" src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" />
-              <span><strong>{p.name}</strong><small>{visible ? `${pct(p.id)} % · ${raw.name}` : 'ne partage pas'}</small></span>
-            </div>
-          );
-        })}
+        {members.map(p => <span key={p.id} className="chip">{p.name} : {pct(p.id)} % · {raw.name}</span>)}
       </div>
 
       <div className="row team-tools">
@@ -83,6 +87,7 @@ export function Team({ profileId, isDone }: { profileId: number; isDone: (p: num
           {!shown.length && <tr><td colSpan={2 + members.length} className="meta">Rien à faire ensemble sur ce Dofus pour l’instant.</td></tr>}
         </tbody>
       </table>
+      </>}
       {members.length < 2 && <p className="meta small">Personne d’autre ne partage encore sa progression : chacun peut cocher la case en haut.</p>}
     </main>
   );
