@@ -1,7 +1,9 @@
 // Page « Métiers & ressources » : reprise de l'ancien site (6 métiers, liste globale, multiplicateur, cases à cocher par personnage).
 import { useState } from 'react';
 import { jobs } from './data/metiers';
-import { toggle } from './model/progress';
+import { qtyOf, setQty, teamInfo, toggle } from './model/progress';
+import { profiles } from './model/profiles';
+import { post } from './model/messages';
 import { Mates, OfferButton } from './Mates';
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -18,6 +20,7 @@ function allItems() {
   return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
 const ALL = allItems();
+const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
 
 export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
   const lsMult = `fzth:v2:jobMult:${profileId}`;
@@ -32,7 +35,9 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const fmt = (q: number) => (q * mult).toLocaleString('fr-FR');
 
   const copy = async () => {
-    const txt = ALL.map(x => `${x.name} : ${fmt(x.qty)}`).join('\n');
+    // Liste de ce qui MANQUE (besoin total × multiplicateur − ce que j'ai), ressources réunies exclues.
+    const txt = ALL.map(x => { const k = key(x.name); const need = x.qty * mult; const have = qtyOf(profileId, k) ?? 0;
+      return isDone(profileId, k) || have >= need ? null : `${x.name} : ${(need - have).toLocaleString('fr-FR')}`; }).filter(Boolean).join('\n');
     try { await navigator.clipboard.writeText(txt); setCopied('Liste copiée !'); } catch { setCopied('Copie impossible ici'); }
     setTimeout(() => setCopied(''), 2000);
   };
@@ -41,16 +46,39 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
     for (const x of ALL) toggle(profileId, key(x.name), false);
     setConfirmReset(false);
   };
+  const { team } = teamInfo();
+  const me = profiles.find(p => p.id === profileId)!;
+  const mates = profiles.filter(p => p.id !== profileId && team[p.id]);
+  // need = besoin affiché (métier ou total) × multiplicateur ; « réunie » se calcule sur le besoin total de la ressource.
   const row = (name: string, qty: number, title?: string) => {
     const k = key(name); const d = isDone(profileId, k);
+    const need = qty * mult; const total = (TOTAL.get(k) ?? qty) * mult;
+    const have = qtyOf(profileId, k);
+    const missing = have === undefined ? (d ? 0 : need) : Math.max(0, need - have);
+    // Coéquipiers qui ont indiqué une quantité : le plus fourni est proposé pour la demande.
+    const stock = mates.map(m => ({ m, q: qtyOf(m.id, k) ?? 0 })).filter(x => x.q > 0).sort((a, b) => b.q - a.q);
+    const ask = () => {
+      const best = stock[0];
+      void post('text', `🙏 ${me.name} cherche ${missing.toLocaleString('fr-FR')} × ${name}${best ? ` — ${best.m.name}, tu en as ${best.q.toLocaleString('fr-FR')} : tu peux m’en passer ?` : ' : quelqu’un en a en surplus ?'}`, name);
+    };
     return (
-      <label key={name} className={`res-card${d ? ' done' : ''}`} title={title}>
-        <input type="checkbox" checked={d} onChange={() => toggle(profileId, k)} />
+      <div key={name} className={`res-card qty-card${d ? ' done' : ''}`} title={title}>
+        <input type="checkbox" checked={d} onChange={() => toggle(profileId, k)} title="J’ai tout" />
         <span className="rname">{name}</span>
-        <Mates id={k} profileId={profileId} isDone={isDone} />
-        {d && <OfferButton name={name} profileId={profileId} />}
-        <span className="qty">{fmt(qty)}</span>
-      </label>
+        <label className="have" title="Combien j’en ai">
+          <input type="number" min={0} inputMode="numeric" value={have ?? ''} placeholder="j’ai…"
+            onChange={e => setQty(profileId, k, Number(e.target.value), total)} />
+          <span className="need">/ {need.toLocaleString('fr-FR')}</span>
+        </label>
+        {have !== undefined && !d && missing > 0 && <span className="missing" title="Il te manque">−{missing.toLocaleString('fr-FR')}</span>}
+        {have !== undefined && have > total && <span className="surplus" title="Surplus par rapport à ton besoin total">+{(have - total).toLocaleString('fr-FR')}</span>}
+        <span className="stock">
+          {stock.map(({ m, q }) => <span key={m.id} className="st-m" title={`${m.name} en a ${q.toLocaleString('fr-FR')}`}><img src={`${import.meta.env.BASE_URL}persos/${m.image}`} alt="" />{q.toLocaleString('fr-FR')}</span>)}
+          {!stock.length && <Mates id={k} profileId={profileId} isDone={isDone} />}
+        </span>
+        {!d && missing > 0 && (have !== undefined || stock.length > 0) && <button type="button" className="offer-btn" onClick={ask} title={stock[0] ? `Demander à ${stock[0].m.name}` : 'Demander à l’équipe'}>🙏</button>}
+        {(d || (have !== undefined && have > total)) && <OfferButton name={name} profileId={profileId} />}
+      </div>
     );
   };
 
@@ -74,7 +102,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
           <div className="detail-head">
             <div><h3>Liste globale des ressources</h3><p className="meta">Regroupées entre tous les métiers pour éviter les doublons.</p></div>
             <div className="row">
-              <button className="primary" onClick={copy}>{copied || 'Copier la liste'}</button>
+              <button className="primary" onClick={copy}>{copied || 'Copier ce qui me manque'}</button>
               <button onClick={reset}>{confirmReset ? 'Confirmer ?' : 'Réinitialiser les cases'}</button>
             </div>
           </div>

@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from 'react';
 import { cloud } from '../config';
 
-export interface Entry { done: boolean; at: string }
+export interface Entry { done: boolean; at: string; qty?: number }
 export type SyncStatus = 'local' | 'syncing' | 'ok' | 'offline' | 'badcode';
 
 const LS_DATA = 'fzth:v2:progress';
@@ -107,29 +107,29 @@ async function doSync() {
   for (const p of profiles) {
     const code = codes[p];
     try {
-      const items: { id: string; done: boolean; at: string }[] = []; const sent = new Map<string, string>();
+      const items: { id: string; done: boolean; at: string; qty?: number }[] = []; const sent = new Map<string, string>();
       for (const k of pending) {
         if (!k.startsWith(p + '|')) continue;
         const e = entries.get(k); if (!e) continue;
-        items.push({ id: k.slice(k.indexOf('|') + 1), done: e.done, at: e.at }); sent.set(k, e.at);
+        items.push({ id: k.slice(k.indexOf('|') + 1), done: e.done, at: e.at, ...(e.qty !== undefined ? { qty: e.qty } : {}) }); sent.set(k, e.at);
       }
       if (items.length) await rpc('fzth_set', { p_profile: p, p_code: code, p_items: items });
       for (const [k, at] of sent) if (entries.get(k)?.at === at) pending.delete(k); // pas re-modifié pendant l'envoi
-      const rows = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string }[]>('fzth_get', { p_profile: p, p_code: code });
+      const rows = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_get', { p_profile: p, p_code: code });
       for (const r of rows ?? []) {
         const k = key(r.profile_id, r.item_id);
         if (pending.has(k)) continue;
         const local = entries.get(k);
-        if (!local || Date.parse(r.updated_at) >= Date.parse(local.at)) entries.set(k, { done: r.done, at: r.updated_at });
+        if (!local || Date.parse(r.updated_at) >= Date.parse(local.at)) entries.set(k, { done: r.done, at: r.updated_at, ...(r.qty != null ? { qty: r.qty } : {}) });
       }
       // Équipe : qui partage, et la progression des autres (lecture seule, jamais renvoyée au serveur).
       const st = await rpc<{ profile_id: number; shared: boolean }[]>('fzth_team_status', { p_profile: p, p_code: code });
       team = Object.fromEntries((st ?? []).map(r => [r.profile_id, r.shared])); teamLoaded = true;
       for (const k of [...entries.keys()]) { const op = Number(k.split('|')[0]); if (!codes[op] && !team[op]) entries.delete(k); } // partage retiré
-      const others = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string }[]>('fzth_team_get', { p_profile: p, p_code: code });
+      const others = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_team_get', { p_profile: p, p_code: code });
       for (const r of others ?? []) {
         if (codes[r.profile_id]) continue; // personnage aussi déverrouillé ici : on garde sa propre synchro
-        entries.set(key(r.profile_id, r.item_id), { done: r.done, at: r.updated_at });
+        entries.set(key(r.profile_id, r.item_id), { done: r.done, at: r.updated_at, ...(r.qty != null ? { qty: r.qty } : {}) });
       }
     } catch (e) {
       if ((e as RpcError).message === 'code invalide') { delete codes[p]; writeLS(LS_CODES, codes); failed = 'badcode'; } // code changé ailleurs
@@ -153,7 +153,7 @@ export function toggle(profile: number, id: string, done?: boolean, opts: { sile
   const next = done ?? !cur?.done;
   if (done !== undefined && cur && cur.done === next) return; // déjà dans cet état
   const at = new Date().toISOString();
-  entries.set(k, { done: next, at });
+  entries.set(k, { done: next, at, ...(cur?.qty !== undefined ? { qty: cur.qty } : {}) });
   pending.add(k);
   if (!opts.silent && !id.startsWith('choice:')) {
     history = [{ at, profile, id, done: next, prev: !!cur?.done }, ...history].slice(0, 150);
@@ -182,6 +182,21 @@ export function listDone(profile: number, prefix = ''): string[] {
   for (const [k, e] of entries) if (e.done && k.startsWith(pre)) out.push(k.slice(String(profile).length + 1));
   return out;
 }
+
+/** Quantité possédée (ressources de métiers). done = quantité suffisante pour le besoin indiqué. */
+export function setQty(profile: number, id: string, qty: number, need: number) {
+  const k = key(profile, id);
+  const q = Math.max(0, Math.min(100_000_000, Math.floor(qty) || 0));
+  const cur = entries.get(k);
+  if (cur && cur.qty === q && cur.done === (q >= need)) return;
+  entries.set(k, { done: q >= need, qty: q, at: new Date().toISOString() });
+  pending.add(k);
+  save(); emit();
+  if (qtyTimer) clearTimeout(qtyTimer);
+  qtyTimer = setTimeout(() => void sync(), 800); // attend la fin de la saisie
+}
+let qtyTimer: ReturnType<typeof setTimeout> | null = null;
+export const qtyOf = (profile: number, id: string) => entries.get(key(profile, id))?.qty;
 
 export function isDone(profile: number, id: string) { return !!entries.get(key(profile, id))?.done; }
 

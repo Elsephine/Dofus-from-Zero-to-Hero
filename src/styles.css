@@ -473,3 +473,22 @@ body.pip { margin: 0; }
 .goal-pick .sec-head small { color: var(--muted); }
 .goal-pick ul { list-style: none; margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 2px; }
 .goal-pick { max-height: 340px; }
+
+/* Quantités possédées (métiers) */
+.res-grid:has(.qty-card) { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.qty-card { cursor: default; flex-wrap: wrap; row-gap: 4px; }
+.qty-card .rname { min-width: 120px; }
+.qty-card .have { display: flex; align-items: center; gap: 4px; }
+.qty-card .have input { width: 74px; font: inherit; font-size: 13px; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); text-align: right; }
+.qty-card .need { color: var(--gold2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.qty-card .missing { color: #ff9f9f; font-size: 12px; }
+.qty-card .surplus { color: var(--green); font-size: 12px; }
+.qty-card .stock { display: flex; gap: 6px; margin-left: auto; }
+.st-m { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); }
+.st-m img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; }
+.res-card.done.qty-card { opacity: .6; }
+.res-card.done.qty-card .rname { text-decoration: line-through; }
+
+.qty-card .rname { flex: 1 1 calc(100% - 34px); }
+.res-grid:has(.qty-card) { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.qty-card .have { margin-left: 24px; }

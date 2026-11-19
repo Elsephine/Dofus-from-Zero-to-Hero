@@ -239,3 +239,43 @@ end $$;
 
 revoke all on function public.fzth_goal_list(integer, text), public.fzth_goal_create(integer, text, text, text, jsonb), public.fzth_goal_close(integer, text, uuid, boolean) from public;
 grant execute on function public.fzth_goal_list(integer, text), public.fzth_goal_create(integer, text, text, text, jsonb), public.fzth_goal_close(integer, text, uuid, boolean) to anon;
+
+-- ---------- Quantités possédées (ressources de métiers) : colonne qty, renvoyée par fzth_get / fzth_team_get ----------
+alter table public.fzth_progress add column if not exists qty integer check (qty is null or qty between 0 and 100000000);
+
+drop function if exists public.fzth_get(integer, text);
+create function public.fzth_get(p_profile integer, p_code text)
+returns table (profile_id integer, item_id text, done boolean, updated_at timestamptz, qty integer)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select p.profile_id, p.item_id, p.done, p.updated_at, p.qty from fzth_progress p where p.profile_id = p_profile;
+end $$;
+
+drop function if exists public.fzth_team_get(integer, text);
+create function public.fzth_team_get(p_profile integer, p_code text)
+returns table (profile_id integer, item_id text, done boolean, updated_at timestamptz, qty integer)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select p.profile_id, p.item_id, p.done, p.updated_at, p.qty from fzth_progress p
+    join fzth_profile_code c on c.profile_id = p.profile_id
+    where c.shared and p.profile_id <> p_profile;
+end $$;
+
+-- p_items : [{ "id": "...", "done": true, "at": "...", "qty": 120 (facultatif) }]
+create or replace function public.fzth_set(p_profile integer, p_code text, p_items jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  if jsonb_array_length(p_items) > 2000 then raise exception 'trop d''objectifs en une fois'; end if;
+  insert into fzth_progress as t (profile_id, item_id, done, updated_at, qty)
+  select p_profile, x->>'id', (x->>'done')::boolean, least(coalesce((x->>'at')::timestamptz, now()), now() + interval '5 minutes'), (x->>'qty')::integer
+  from jsonb_array_elements(p_items) x
+  on conflict (profile_id, item_id) do update
+    set done = excluded.done, updated_at = excluded.updated_at, qty = excluded.qty
+    where excluded.updated_at >= t.updated_at;
+end $$;
+
+revoke all on function public.fzth_get(integer, text), public.fzth_team_get(integer, text) from public;
+grant execute on function public.fzth_get(integer, text), public.fzth_team_get(integer, text) to anon;
