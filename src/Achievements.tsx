@@ -1,6 +1,6 @@
 // Onglet Succès : catalogue complet, presque finis, donjons (clé + plan), classement de l'équipe, événements à ne pas rater.
 import { useMemo, useState } from 'react';
-import { AlarmClock, Castle, Hourglass, Medal, ScrollText } from 'lucide-react';
+import { AlarmClock, Castle, Hourglass, Medal, ScrollText, Star, Compass, Skull, BookOpen, Hammer, PawPrint, PartyPopper, Swords, Clock4, Moon, Shield, Users, Gem } from 'lucide-react';
 import { burst } from './model/celebrate';
 import type { Ach } from './data/jeu/succes';
 import { GAME_VERSION } from './data/jeu/donjons';
@@ -12,6 +12,11 @@ import { teamInfo, toggle } from './model/progress';
 import { DungeonAchievements } from './TeamLive';
 
 const TABS: [string, string, typeof ScrollText][] = [['all', 'Tous les succès', ScrollText], ['almost', 'Presque finis', Hourglass], ['dj', 'Donjons', Castle], ['rank', 'Classement', Medal], ['alerts', 'À ne pas rater', AlarmClock]];
+const CAT_ICON: Record<string, typeof Star> = { 'Général': Star, 'Exploration': Compass, 'Donjons': Castle, 'Monstres': Skull, 'Quêtes': BookOpen, 'Métiers': Hammer, 'Élevage': PawPrint,
+  'Événements': PartyPopper, 'Kolizéum': Swords, 'Anomalies Temporelles': Clock4, 'Songes Infinis': Moon, 'Guilde': Shield, 'Compagnons': Users };
+const catIcon = (name: string) => CAT_ICON[name] ?? Gem;
+/** Médaille selon le pourcentage de points obtenus dans la catégorie. */
+const medal = (pct: number) => pct >= 90 ? 'gold' : pct >= 50 ? 'silver' : pct >= 25 ? 'bronze' : null;
 const avatar = (img: string) => `${import.meta.env.BASE_URL}persos/${img}`;
 
 export function Achievements({ profileId, isDone }: { profileId: number; isDone: IsDone }) {
@@ -26,7 +31,7 @@ export function Achievements({ profileId, isDone }: { profileId: number; isDone:
         {d && mine && <div className="ach-score"><strong>{mine.pts.toLocaleString('fr-FR')}</strong><span>points · {mine.n}/{d.list.length} succès</span></div>}
       </div>
       <nav className="tabs always">{TABS.map(([k, l, I]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => pick(k)}><I size={15} /> {l}</button>)}</nav>
-      {!d && tab !== 'dj' ? <p className="meta">Chargement des succès…</p> : (
+      {!d && tab !== 'dj' ? <div className="skeleton-list">{Array.from({ length: 6 }, (_, i) => <span key={i} className="skeleton" />)}</div> : (
         <div className="ach-body">
           {tab === 'all' && d && <Catalogue d={d} profileId={profileId} isDone={isDone} />}
           {tab === 'almost' && d && <Almost d={d} profileId={profileId} isDone={isDone} />}
@@ -90,7 +95,8 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
       <nav className="ach-cats">
         {tops.map(t => (
           <button key={t.id} className={cat === t.id && !nq ? 'on' : ''} onClick={() => { setCat(t.id); setQ(''); }}>
-            <span>{t.name}</span><small>{stats.get(t.id)?.pct ?? 0} %</small>
+            {(() => { const I = catIcon(t.name); const m = medal(stats.get(t.id)?.pct ?? 0); return <span className={`cat-ic${m ? ' m-' + m : ''}`} title={m ? `Médaille ${m === 'gold' ? 'd’or' : m === 'silver' ? 'd’argent' : 'de bronze'}` : undefined}><I size={16} /></span>; })()}
+            <span className="cat-name">{t.name}</span><small>{stats.get(t.id)?.pct ?? 0} %</small>
             <i style={{ width: `${stats.get(t.id)?.pct ?? 0}%` }} />
           </button>
         ))}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock } from 'lucide-react';
 import { EggRing, eggColor } from './ui/EggRing';
 import { burst, celebrateDofus, closeTrophy, useTrophy } from './model/celebrate';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
@@ -77,13 +77,14 @@ export function App() {
   if (!profile) {
     return (
       <div className="app landing">
+        <Particles />
         <h1 className="landing-title">From Zero to Hero</h1>
         <p className="landing-sub">Choisis ton personnage</p>
         <section className="team">
           {profiles.map(p => (
             <button key={p.id} className="portrait" data-world={p.world} onClick={() => open(p.id)}>
               <img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt={`Illustration de ${p.name}`} />
-              <span className="portrait-info"><strong>{p.name}</strong><small>{p.classe}{isUnlocked(p.id) ? '' : ' · 🔒'}</small></span>
+              <span className="portrait-info"><span className="plate"><strong>{p.name}</strong><small>{p.classe}{isUnlocked(p.id) ? '' : <> · <Lock size={11} /></>}</small></span></span>
             </button>
           ))}
         </section>
@@ -118,6 +119,7 @@ export function App() {
       <Toasts />
       <TrophyModal />
 
+      <div key={view} className="page-fade">
       {view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
           <div className="with-rail">
@@ -126,6 +128,7 @@ export function App() {
           </div>
         )
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
+      </div>
     </div>
   );
 }
@@ -212,6 +215,12 @@ function TrophyModal() {
       </div>
     </div>
   );
+}
+
+/** Particules lumineuses qui flottent derrière les portraits (positions fixes pour éviter de tout recalculer). */
+const SPARKS = Array.from({ length: 34 }, (_, i) => ({ l: (i * 37) % 100, d: 8 + ((i * 7) % 10), delay: -((i * 13) % 17), s: 2 + ((i * 5) % 4), gold: i % 3 !== 0 }));
+function Particles() {
+  return <div className="particles" aria-hidden>{SPARKS.map((p, i) => <i key={i} className={p.gold ? 'g' : 'r'} style={{ left: `${p.l}%`, width: p.s, height: p.s, animationDuration: `${p.d}s`, animationDelay: `${p.delay}s` }} />)}</div>;
 }
 
 /** Bouton clair / sombre (retenu sur l'appareil). */
