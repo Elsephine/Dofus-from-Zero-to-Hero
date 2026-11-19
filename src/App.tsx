@@ -2,21 +2,16 @@ import { useEffect, useState } from 'react';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
 import { getTeamCode, setTeamCode, toggle, useProgress, type SyncStatus } from './model/progress';
-import { iconLegend } from './data/dom-de-pin';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
+import { iconInfo, type IconFamily } from './model/icons';
+import { requirements } from './model/requirements';
+import { picksFor, setPick, viewFor } from './model/choices';
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
   const [v, setV] = useState<T>(() => { try { const r = localStorage.getItem(k); return r === null ? def : JSON.parse(r); } catch { return def; } });
   return [v, (n: T) => { setV(n); try { localStorage.setItem(k, JSON.stringify(n)); } catch { /* ignore */ } }];
 };
-
-const ICON_SHORT: Record<string, string> = {
-  'combat-solo': '⚔ solo', 'combat-groupe': '⚔ groupe', 'combat-tactique-solo': '♟ tactique', 'combat-vague-solo': '≋ vagues',
-  'combat-vague-groupe': '≋ vagues groupe', donjon: '⛫ donjon', 'bashing-mob': '✦ bashing', dimension: '◈ dimension', anomalie: '⚠ anomalie',
-  'horaires-stricts': '⏱ horaires', 'besoin-sort': '✧ sort', songe: '☁ songe', caracteristiques: '★ carac.',
-};
-const LABEL = Object.fromEntries(iconLegend.map(i => [i.id, i.label]));
 
 export function App() {
   const { status, lastSync, pendingCount, isDone } = useProgress();
@@ -44,7 +39,7 @@ export function App() {
       </header>
 
       {info
-        ? <DofusPage info={info} dofus={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
+        ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} status={status} />}
@@ -60,7 +55,8 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
       <h2>Tous les Dofus</h2>
       <div className="grid">
         {dofusInfo.map(d => {
-          const c = catalog.find(x => x.id === d.id);
+          const raw = catalog.find(x => x.id === d.id);
+          const c = raw && viewFor(raw, profileId, isDone);
           const done = c ? c.itemIds.filter(id => isDone(profileId, id)).length : 0;
           const pct = c && c.itemIds.length ? Math.round((done / c.itemIds.length) * 100) : 0;
           return (
@@ -77,11 +73,13 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
   );
 }
 
-function DofusPage({ info, dofus, profileId, hideDone, setHideDone, isDone, onBack }: {
-  info: DofusInfo; dofus?: DofusView; profileId: number; hideDone: boolean; setHideDone: (v: boolean) => void;
+function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack }: {
+  info: DofusInfo; raw?: DofusView; profileId: number; hideDone: boolean; setHideDone: (v: boolean) => void;
   isDone: (p: number, id: string) => boolean; onBack: () => void;
 }) {
   const [tab, setTab] = useState<'quetes' | 'ressources'>('quetes');
+  const dofus = raw && viewFor(raw, profileId, isDone);
+  const picks = raw ? picksFor(raw, profileId, isDone) : {};
   const done = dofus ? dofus.itemIds.filter(id => isDone(profileId, id)).length : 0;
   const total = dofus?.itemIds.length ?? 0;
   return (
@@ -95,12 +93,24 @@ function DofusPage({ info, dofus, profileId, hideDone, setHideDone, isDone, onBa
             {info.level && <>Niveau recommandé {info.level}</>}
             {dofus && <> · {done}/{total} objectifs</>}
             {dofus?.kamas && <> · {dofus.kamas.total.toLocaleString('fr-FR')} K gagnés{dofus.kamas.complete ? '' : ' (partiel)'}</>}
-            {!!dofus?.requiresDofus?.length && <> · Inclut : {dofus.requiresDofus.join(', ')}</>}
           </p>
           <div className="stats">{info.stats.map(s => <span key={s} className="chip stat">{s}</span>)}</div>
           {info.effect && <p className="effect">{info.effect}</p>}
           {dofus && <span className="bar big"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></span>}
         </div>
+        {raw && !!raw.choices.length && (
+          <div className="choices">
+            <h3>Choix avant de commencer</h3>
+            {raw.choices.map(c => (
+              <label key={c.selector}>{c.label}
+                <select value={picks[c.selector]} onChange={e => setPick(raw, profileId, c.selector, e.target.value)}>
+                  {c.options.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+        )}
+        {dofus && <Needs dofus={dofus} profileId={profileId} isDone={isDone} />}
       </section>
 
       {!dofus ? (
@@ -145,6 +155,29 @@ function QuestList({ dofus, profileId, hideDone, setHideDone, isDone }: {
         })}
       </div>
     </section>
+  );
+}
+
+const FAMILIES: [IconFamily, string][] = [['combat', 'Combats'], ['donjon', 'Donjons'], ['bashing', 'Bashing'], ['special', 'Spécial'], ['metier', 'Métiers'], ['aide', 'Aide / classes']];
+
+function Needs({ dofus, profileId, isDone }: { dofus: DofusView; profileId: number; isDone: (p: number, id: string) => boolean }) {
+  const req = requirements(dofus, id => isDone(profileId, id));
+  const any = FAMILIES.some(([f]) => req[f].length);
+  return (
+    <div className="needs">
+      <h3>Ce que demande ce Dofus <small>(quêtes restantes)</small></h3>
+      {!any && <p className="meta">Plus rien à prévoir.</p>}
+      {FAMILIES.map(([f, title]) => req[f].length ? (
+        <div key={f} className="need-row">
+          <span className="need-title">{title}</span>
+          {req[f].map(e => (
+            <span key={e.type + e.label} className={`chip obj f-${f}`} title={e.details.map(d => d.quest + (d.text ? ` (${d.text})` : '')).join('\n')}>
+              {f === 'donjon' ? '⛫ ' + e.label : iconInfo(e.type).short}{f === 'combat' ? ` ×${e.count}` : e.count > 1 ? ` ×${e.count}` : ''}
+            </span>
+          ))}
+        </div>
+      ) : null)}
+    </div>
   );
 }
 
@@ -226,11 +259,11 @@ export function QuestRow({ item, done, grouped, onToggle }: { item: ItemView; do
           {item.dungeon?.tourDuMonde && <span className="chip tdm" title="Donjon demandé dans le Tour du monde">Tour du monde</span>}
           {item.dungeon?.name && <span className="chip dj">⛫ {item.dungeon.name}</span>}
           {item.tag && <span className="chip">{item.tag}</span>}
-          {item.objectives?.filter(o => !(o.type === 'donjon' && item.dungeon?.name)).map((o, k) => (
-            <span key={k} className="chip obj" title={LABEL[o.type] ?? o.type}>
-              {ICON_SHORT[o.type] ?? LABEL[o.type] ?? o.type}{o.count ? ` ×${o.count}` : ''}{o.label ? ` · ${o.label}` : ''}
-            </span>
-          ))}
+          {item.objectives?.filter(o => !(o.type === 'donjon' && item.dungeon?.name)).map((o, k) => {
+            const ic = iconInfo(o.type);
+            return <span key={k} className={`chip obj f-${ic.family}`} title={ic.label}>{ic.short}{o.count ? ` ×${o.count}` : ''}{o.label ? ` · ${o.label}` : ''}</span>;
+          })}
+          {item.notes?.map((n, k) => <span key={'n' + k} className="chip note">{n}</span>)}
           {item.level !== undefined && <span className="chip lvl">niv. {item.level}</span>}
           {item.kamas !== undefined && item.kamas > 0 && <span className="chip k">{item.kamas.toLocaleString('fr-FR')} K</span>}
         </span>

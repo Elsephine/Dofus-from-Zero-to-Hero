@@ -128,3 +128,20 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
   .reward { flex-wrap: wrap; }
   .chips { max-width: 50%; }
 }
+
+/* Ce que demande ce Dofus */
+.reward { flex-wrap: wrap; }
+.needs { flex-basis: 100%; border-top: 1px solid var(--line); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow: auto; }
+.needs h3 { font-size: 14px; color: var(--gold); }
+.needs h3 small { font: 11px system-ui, sans-serif; color: var(--muted); }
+.need-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.need-title { font-size: 12px; color: var(--muted); min-width: 92px; }
+.chip.f-donjon { color: var(--world-bright); }
+.chip.f-special { background: #6a4fb033; color: #d9c8ff; }
+.chip.f-metier { background: #4f8a5a33; color: #bfe8c8; }
+.chip.f-aide { background: #b0704f33; color: #ffd2b8; }
+.chip.note { background: transparent; border: 1px dashed var(--line); }
+.choices { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; }
+.choices h3 { font-size: 14px; color: var(--gold); margin-right: 6px; }
+.choices label { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.choices select { font: inherit; font-size: 13px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--world-border); background: var(--bg); color: var(--text); }

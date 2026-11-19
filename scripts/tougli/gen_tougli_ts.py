@@ -34,3 +34,35 @@ with open(REPO+'/src/data/tougli/resources.ts','w') as f:
     for q,lst in res.items(): f.write('  '+json.dumps(q,ensure_ascii=False)+': '+json.dumps([[x['name'],x['qty']] for x in lst],ensure_ascii=False)+',\n')
     f.write("};\n")
 print(len(rows),'dofus')
+
+# Quêtes de chaque Dofus (onglets du classeur), sauf Dom de Pin qui a sa liste corrigée à la main (dom-de-pin.ts).
+qs=json.load(open(OUT+'/quests.json'))
+def fix(u): return 'https://www.dofuspourlesnoobs.com/'+u.split('dofuspourlesnoobs.com/')[-1] if u else u
+with open(REPO+'/src/data/tougli/quests.ts','w') as f:
+    f.write("// GÉNÉRÉ par scripts/tougli/gen_tougli_ts.py (extract_all_quests.py) depuis les onglets Dofus du classeur Tougli. Ne pas éditer à la main.\n")
+    f.write("// Ordre conseillé par Tougli, liens Dofus pour les Noobs tels qu'écrits dans le classeur, icônes de la ligne (type + xN ou libellé),\n")
+    f.write("// hint = lignes de texte placées au-dessus d'une quête, group = quêtes à faire ensemble.\n")
+    f.write("// choices = « Choix avant de commencer » (alignement, ordre, métier) ; variant = la quête dépend de ce choix.\n")
+    f.write("import type { DomDePinObjective } from '../dom-de-pin';\n")
+    f.write("export interface SheetLink { name: string; url?: string }\n")
+    f.write("export interface SheetVariant { selector: string; cases: { match: string; item: SheetLink | null }[]; else: SheetLink | null }\n")
+    f.write("export interface SheetItem { name: string; url?: string; objectives: DomDePinObjective[]; notes?: string[]; hint?: string; group?: string; variant?: SheetVariant }\n")
+    f.write("export interface SheetSection { title: string; items: SheetItem[] }\n")
+    f.write("export interface SheetChoice { label: string; options: string[]; default: string | null }\n")
+    f.write("export const sheetQuests: Record<string, { choices: Record<string, SheetChoice>; sections: SheetSection[] }> = {\n")
+    for sheet,data in qs['sheets'].items():
+        did=ID.get(sheet, slug(sheet))
+        if did=='dom-de-pin': continue
+        for sec in data['sections']:
+            sec['title']=re.sub(r'\s+',' ',sec['title'])
+            for it in sec['items']:
+                if it.get('url'): it['url']=fix(it['url'])
+                v=it.get('variant')
+                if v:
+                    for c in v['cases']:
+                        if c['item'] and c['item'].get('url'): c['item']['url']=fix(c['item']['url'])
+                    if v['else'] and v['else'].get('url'): v['else']['url']=fix(v['else']['url'])
+        f.write(f"  {json.dumps(did)}: {{\n    choices: {json.dumps(data['selectors'],ensure_ascii=False)},\n    sections: [\n")
+        for sec in data['sections']: f.write("      "+json.dumps(sec,ensure_ascii=False)+",\n")
+        f.write("    ],\n  },\n")
+    f.write("};\n")

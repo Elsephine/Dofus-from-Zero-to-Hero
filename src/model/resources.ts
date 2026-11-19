@@ -1,9 +1,11 @@
 // Ressources nécessaires d'un Dofus = somme des ressources des quêtes encore à faire (onglet « database » du classeur Tougli).
 import { questResources } from '../data/tougli/resources';
 import type { DofusView } from './catalog';
+import { resourceRemovals } from '../data/corrections';
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
-const byName = new Map(Object.entries(questResources).map(([k, v]) => [norm(k), v]));
+const removals = new Map(Object.entries(resourceRemovals).map(([k, v]) => [norm(k), new Set(v)]));
+const byName = new Map(Object.entries(questResources).map(([k, v]) => [norm(k), v.filter(([r]) => !removals.get(norm(k))?.has(r))]));
 
 export interface ResourceNeed { name: string; qty: number; quests: string[] }
 
