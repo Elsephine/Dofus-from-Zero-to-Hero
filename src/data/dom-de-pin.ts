@@ -64,7 +64,7 @@ export const domDePin: DomDePinSection[] = [
   { id: 'prerequis-des-prerequis', title: 'Prérequis des prérequis', items: [
     q('Ça est frugal, une fois'),
     q('Dites-le avec des fleurs'),
-    q('À la croisée des mondes', { dungeon: dj(undefined) }),
+    q('À la croisée des mondes'),
     q('Infâme pourriture', { group: 'groupe-1' }), q('Le saule du promeneur', { group: 'groupe-1' }), q('Sous le bois de sa colère', { group: 'groupe-1' }),
     q("C'est tout simple"),
     q('Arak-haï en pagaille', { dungeon: dj('Antre de la Reine Nyée') }),
@@ -75,13 +75,13 @@ export const domDePin: DomDePinSection[] = [
     q('Le festival de la lanterne', { dungeon: dj("Fabrique de foux d'artifice") }),
     q("L'équilibre des forces", { dungeon: dj('Dojo du vent', true, false) }), q("Sang d'encre"), q('Maudite disparition'), q('Requiem pour un Yokai'),
     q('Si loin, si proches'), q('Jusqu\'à leur dernier soupir'), q('L\'épopée du moine pèlerin'),
-    q('Main dans la main', { hint: 'Avoir un moyen de soigner un ennemi' }),
-    q("De l'encre spectaculaire"), q('Deux souffles, une inspiration'), q('En ce jardin qui nous unit'), q("Barnabé dans l'espace"),
+    q('Main dans la main'),
+    q("De l'encre spectaculaire", { hint: 'Avoir un moyen de soigner un ennemi' }), q('Deux souffles, une inspiration'), q('En ce jardin qui nous unit'), q("Barnabé dans l'espace"),
     q('Chaque chose en son temps'), q('Aux frontières du réel'),
     q('Ce sera mieux avant'), q('Cauchemars prémonitoires'), q('Partie de chasse'), q('Quatre contre un'), q('Rêves translucides'),
     q('Veilleur sous surveillance'), q('La source de tous les maux'), q("Quand l'éveil n'est qu'un songe"), q('Le dernier rempart'),
-    q("Par ce serment s'écrit le monde", { hint: 'Pour voir Sylvosse : aller en [26,-32], cliquer sur la zone noire puis aller sur la map à droite' }),
-    q('Une bien étrange prophétie'), q('Bûcherons en détresse'), q('Voyage, voyage'), q("La porte d'Enutrosor", { tag: 'Chasse' }),
+    q("Par ce serment s'écrit le monde"),
+    q('Une bien étrange prophétie', { hint: 'Pour voir Sylvosse : aller en [26,-32], cliquer sur la zone noire puis aller sur la map à droite' }), q('Bûcherons en détresse'), q('Voyage, voyage'), q("La porte d'Enutrosor", { tag: 'Chasse' }),
     q('Orichomania'), q("La cité de l'indicible mal"), q('Messager clandestin'), q('La voix de son maître'), q('Le maître des zaaps'),
     q('Énergie renouvelable'),
     q('Traitement de choc'), q('Le disparu de Sufokia'), q('Rendez-vous avec la mort'), q("Crise d'identité"), q('Toute possession dépossède'),
@@ -121,9 +121,8 @@ export const domDePin: DomDePinSection[] = [
 
 // Points encore ouverts (à voir avec Meriem) — les 8 « trous » entre captures sont résolus : aucune quête manquante.
 export const domDePinOpenPoints = [
-  "Tougli (site) annonce 161 objectifs ; le site et le classeur listent 109 quêtes + 6 prérequis = 115. Écart de 46 non expliqué (le site compte peut-être autre chose).",
+  "Tougli (site) annonce 161 objectifs ; le site et le classeur listent 109 quêtes + 6 prérequis = 115. Écart non expliqué, sans impact sur le suivi.",
   "Ordre du début de « Prérequis des prérequis » différent entre le site (captures) et le classeur : on garde l'ordre du site.",
-  "« À la croisée des mondes » : un encadré « donjon à capturer pour l'Ocre » sans nom ; le classeur n'indique aucun donjon pour cette quête ni pour la suivante.",
-  "Indices « Avoir un moyen de soigner un ennemi » et « Pour voir Sylvosse… » : peut-être rattachés à la quête du dessus comme l'étaient les donjons (à vérifier sur le site).",
-  "Noms de donjons ajoutés depuis le classeur (Tanukouï San, Dojo du vent, Damadrya, Hell Mina) : l'encadré « à capturer pour l'Ocre » du site n'avait pas de nom.",
 ];
+// Décisions du 19/11/2026 : « À la croisée des mondes » n'a pas de donjon (confirmé par Meriem) ; les indices « soigner un ennemi »
+// et « Pour voir Sylvosse » sont recalés sur la quête du dessous, comme les donjons et l'indice d'« Arrête-la si tu peux » (confirmé par le classeur).
