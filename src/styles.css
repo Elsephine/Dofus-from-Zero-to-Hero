@@ -1,0 +1,87 @@
+/* Charte reprise de l'ancien site : fond sombre, or, Georgia, couleurs par classe. */
+:root {
+  --bg: #0e0d13; --panel: rgba(28, 26, 32, .94); --panel2: #26222a; --line: #45333e; --text: #f7f2f6; --muted: #b5aeb8;
+  --gold: #d8ad62; --gold2: #f0cf8c; --green: #8acaa7; --ocre: #e0a040;
+  --world-accent: #df6b80; --world-bright: #ffd4dd; --world-glow: rgba(177, 49, 81, .24); --world-border: #754354;
+}
+body[data-world="sram"] { --world-accent: #b7a0ed; --world-bright: #e9dcff; --world-glow: rgba(110, 67, 180, .32); --world-border: #675286; --panel: rgba(25, 21, 37, .94); }
+body[data-world="feca"] { --world-accent: #7bd7d7; --world-bright: #e0ffff; --world-glow: rgba(48, 156, 163, .28); --world-border: #3c858e; --panel: rgba(17, 31, 37, .94); }
+body[data-world="elio"] { --world-accent: #ffb67b; --world-bright: #ffe5c8; --world-glow: rgba(232, 110, 47, .27); --world-border: #a96d65; --panel: rgba(36, 22, 32, .94); }
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: radial-gradient(ellipse at top, var(--world-glow), transparent 60%), var(--bg);
+  color: var(--text); font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; transition: background .5s;
+}
+h1, h2, h3 { font-family: Georgia, serif; margin: 0; font-weight: normal; }
+a { color: var(--world-bright); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+button:hover { border-color: var(--world-border); }
+button.primary { background: var(--world-accent); color: #111; border-color: transparent; }
+input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height: 16px; flex: none; cursor: pointer; }
+
+/* Écran sans défilement global : seules les listes défilent. */
+.app { height: 100%; display: flex; flex-direction: column; padding: 10px; gap: 10px; }
+.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.top h1 { font-size: 22px; color: var(--gold2); }
+.top .sym { color: var(--world-accent); }
+.profiles { display: flex; gap: 6px; flex: 1; }
+.profiles button small { color: var(--muted); }
+.profiles button.on { border-color: var(--world-accent); box-shadow: 0 0 12px var(--world-glow); }
+.sync { font-size: 12px; }
+.sync.ok { color: var(--green); } .sync.offline, .sync.badcode { color: #ff8f8f; } .sync.local, .sync.syncing { color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--world-border); border-radius: 12px; padding: 12px; }
+.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px 1fr; gap: 10px; }
+.journal { display: flex; flex-direction: column; min-height: 0; }
+.journal h2 { font-size: 16px; color: var(--gold); margin-bottom: 8px; }
+.journal ul { list-style: none; margin: 0; padding: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.dofus-card { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px; text-align: left; }
+.dofus-card.on { border-color: var(--world-accent); background: color-mix(in srgb, var(--world-accent) 14%, var(--panel2)); }
+.dofus-card .count { color: var(--muted); font-size: 12px; }
+.dofus-card.complete .name { color: var(--gold2); }
+.bar { grid-column: 1 / -1; height: 4px; background: #0006; border-radius: 4px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--world-accent); transition: width .3s; }
+
+.detail { display: flex; flex-direction: column; min-height: 0; }
+.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.detail-head h2 { font-size: 20px; color: var(--gold2); }
+.dpln { font: 12px system-ui, sans-serif; margin-left: 6px; }
+.meta { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.meta strong { color: var(--world-bright); font-weight: normal; }
+.toggle { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; white-space: nowrap; cursor: pointer; }
+.sections { overflow: auto; min-height: 0; padding-top: 8px; }
+.section h3 { font-size: 15px; color: var(--gold); margin: 10px 0 4px; }
+.section h3 small { font: 12px system-ui, sans-serif; color: var(--muted); }
+.section ul { list-style: none; margin: 0; padding: 0; }
+
+.quest { border-bottom: 1px solid #ffffff0d; }
+.quest .line { display: flex; align-items: center; gap: 8px; padding: 4px 4px; cursor: pointer; border-radius: 6px; }
+.quest .line:hover { background: #ffffff08; }
+.quest .qname { flex: 1; min-width: 0; }
+.quest.done .qname, .quest.done .chips { opacity: .4; }
+.quest.done .qname a, .quest.done .qname { text-decoration: line-through; }
+.quest.in-group { border-left: 3px solid var(--world-accent); padding-left: 4px; background: color-mix(in srgb, var(--world-accent) 6%, transparent); }
+.hint { font-size: 12px; color: var(--gold2); font-style: italic; padding: 4px 4px 0 28px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 60%; }
+.chip { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: #ffffff10; color: var(--muted); white-space: nowrap; }
+.chip.ocre { background: color-mix(in srgb, var(--ocre) 30%, transparent); color: #ffd79a; }
+.chip.tdm { background: #3b6ea055; color: #b9dcff; }
+.chip.dj { color: var(--world-bright); }
+.chip.k { color: var(--gold2); }
+.chip.ach { background: #d8ad6233; color: var(--gold2); margin-right: 4px; }
+.chip.warn { background: #ff8f8f33; color: #ffb3b3; margin-left: 4px; }
+
+.modal { position: fixed; inset: 0; background: #000a; display: grid; place-items: center; z-index: 10; }
+.modal form { width: min(420px, 92vw); display: flex; flex-direction: column; gap: 10px; }
+.modal p { margin: 0; color: var(--muted); }
+.modal input { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.modal .row { display: flex; justify-content: flex-end; gap: 8px; }
+.warn { color: #ffb3b3 !important; }
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: 150px 1fr; }
+  .chips { max-width: 50%; }
+}
