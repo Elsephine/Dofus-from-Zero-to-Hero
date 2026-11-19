@@ -1,11 +1,13 @@
 # Mise à jour automatique des données du jeu (succès, donjons, clés) depuis les données publiques
 # dofusdude/dofus3-main. Chaque lundi : si une nouvelle version de DOFUS est sortie, on régénère les fichiers,
-# on vérifie que le site se construit, on enregistre sur site-react puis on relance la publication.
+# on vérifie que le site se construit, on enregistre sur site-react puis on publie le site.
+# NB : GitHub ne lance les tâches planifiées que depuis la branche par défaut du dépôt ; elle doit donc être « site-react »
+# (Settings → General → Default branch). Sinon, la mise à jour se lance à la main depuis l'onglet Actions.
 name: Mettre à jour les données du jeu
 on:
   schedule: [{ cron: '17 5 * * 1' }]
   workflow_dispatch:
-permissions: { contents: write, actions: write }
+permissions: { contents: write }
 concurrency: { group: data-update, cancel-in-progress: false }
 jobs:
   update:
@@ -50,5 +52,14 @@ jobs:
           git diff --cached --quiet && { echo "Aucun changement"; exit 0; }
           git commit -q -m "Données du jeu mises à jour : DOFUS ${{ steps.v.outputs.latest }}"
           git push origin site-react
-          # Un envoi fait par ce robot ne relance pas les autres workflows : on relance la publication à la main.
-          gh workflow run deploy.yml --ref site-react
+          # Un envoi fait par ce robot ne relance pas « Publier le site » : on publie ici directement (même étape).
+          cp -r legacy dist/legacy
+          touch dist/.nojekyll
+          printf 'Site construit automatiquement depuis la branche site-react (code source). Ne pas modifier ici.\n' > dist/README.md
+          cd dist
+          git init -q -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publication du site (données du jeu ${{ steps.v.outputs.latest }})"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" main
