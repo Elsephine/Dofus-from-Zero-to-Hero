@@ -370,3 +370,23 @@ body.pip { margin: 0; }
   .dd-menu { right: -4px; }
   .toasts { bottom: 80px; }
 }
+
+/* Colonne des Dofus (page d'un Dofus) */
+.with-rail { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px 1fr; gap: 10px; }
+.with-rail .dofus-page { min-width: 0; }
+.rail { display: flex; flex-direction: column; gap: 3px; overflow: auto; padding: 6px; }
+.rail-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 1px solid transparent; background: none; border-radius: 8px; text-align: left; }
+.rail-item:hover { background: #ffffff0a; border-color: var(--line); }
+.rail-item.on { background: color-mix(in srgb, var(--world-accent) 18%, transparent); border-color: var(--world-accent); }
+.rail-item img { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.rail-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rail-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail-item.complete .rail-name { color: var(--gold2); }
+.rail-item .bar { height: 3px; }
+@media (max-width: 900px) {
+  .with-rail { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 4px; scrollbar-width: none; }
+  .rail-item { flex-direction: column; gap: 2px; min-width: 64px; padding: 4px; }
+  .rail-name { font-size: 10px; max-width: 64px; text-align: center; }
+  .rail-item img { width: 34px; height: 34px; }
+}

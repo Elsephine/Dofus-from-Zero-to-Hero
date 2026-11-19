@@ -77,7 +77,12 @@ export function App() {
       <Toasts />
 
       {view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
-        ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
+        ? (
+          <div className="with-rail">
+            <DofusRail current={info.id} profileId={profile.id} isDone={isDone} onOpen={setView} />
+            <DofusPage key={info.id} info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
+          </div>
+        )
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
     </div>
   );
@@ -146,6 +151,26 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
         })}
       </div>
     </main>
+  );
+}
+
+// Colonne des Dofus sur le côté de la page d'un Dofus : on passe de l'un à l'autre sans revenir à l'accueil.
+function DofusRail({ current, profileId, isDone, onOpen }: { current: string; profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
+  useEffect(() => { document.querySelector('.rail .on')?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [current]);
+  return (
+    <nav className="rail panel" aria-label="Tous les Dofus">
+      {dofusInfo.map(d => {
+        const raw = catalog.find(x => x.id === d.id);
+        const v = raw && viewFor(raw, profileId, isDone);
+        const pct = v && v.itemIds.length ? Math.round(v.itemIds.filter(id => isDone(profileId, id)).length / v.itemIds.length * 100) : 0;
+        return (
+          <button key={d.id} className={`rail-item${d.id === current ? ' on' : ''}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={`${d.name} · ${pct} %`}>
+            {d.image && <img src={img(d.image)} alt="" loading="lazy" />}
+            <span className="rail-text"><span className="rail-name">{d.name}</span><span className="bar"><span style={{ width: `${pct}%` }} /></span></span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
