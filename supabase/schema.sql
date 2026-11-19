@@ -198,3 +198,44 @@ grant execute on function public.fzth_msg_list(integer, text), public.fzth_msg_p
 -- on retire explicitement ce qui ne doit pas être appelé directement.
 revoke execute on function public.fzth_check(integer, text), public.fzth_hash(integer, text) from anon, authenticated;
 alter function public.fzth_hash(integer, text) set search_path = public, pg_catalog;
+
+-- ---------- Objectifs de session (« aujourd'hui : derniers combats du Cauchemar… »), communs aux 3 personnages ----------
+create table if not exists public.fzth_goal (
+  id uuid primary key default gen_random_uuid(),
+  profile_id integer not null check (profile_id between 0 and 2),
+  title text not null check (length(title) between 1 and 120),
+  dofus_id text not null check (length(dofus_id) <= 60),
+  item_ids jsonb not null check (jsonb_typeof(item_ids) = 'array' and jsonb_array_length(item_ids) between 1 and 200),
+  closed boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.fzth_goal enable row level security;
+revoke all on public.fzth_goal from anon, authenticated;
+
+create or replace function public.fzth_goal_list(p_profile integer, p_code text)
+returns table (id uuid, profile_id integer, title text, dofus_id text, item_ids jsonb, closed boolean, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select g.id, g.profile_id, g.title, g.dofus_id, g.item_ids, g.closed, g.created_at from fzth_goal g order by g.created_at desc limit 20;
+end $$;
+
+create or replace function public.fzth_goal_create(p_profile integer, p_code text, p_title text, p_dofus text, p_items jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare new_id uuid;
+begin
+  perform fzth_check(p_profile, p_code);
+  insert into fzth_goal (profile_id, title, dofus_id, item_ids) values (p_profile, trim(p_title), p_dofus, p_items) returning id into new_id;
+  delete from fzth_goal where id in (select id from fzth_goal order by created_at desc offset 50);
+  return new_id;
+end $$;
+
+create or replace function public.fzth_goal_close(p_profile integer, p_code text, p_id uuid, p_closed boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  update fzth_goal set closed = p_closed where id = p_id;
+end $$;
+
+revoke all on function public.fzth_goal_list(integer, text), public.fzth_goal_create(integer, text, text, text, jsonb), public.fzth_goal_close(integer, text, uuid, boolean) from public;
+grant execute on function public.fzth_goal_list(integer, text), public.fzth_goal_create(integer, text, text, text, jsonb), public.fzth_goal_close(integer, text, uuid, boolean) to anon;

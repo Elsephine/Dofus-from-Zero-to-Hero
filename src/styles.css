@@ -440,3 +440,36 @@ body.pip { margin: 0; }
 .mainnav button { white-space: nowrap; }
 .clock > button > span { display: flex; gap: 4px; white-space: nowrap; }
 @media (max-width: 1250px) and (min-width: 901px) { .mainnav .lbl { display: none; } .mainnav .ic { margin: 0; font-size: 16px; } }
+
+/* Objectifs de session */
+.goals { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--world-border); border-radius: 12px; padding: 10px; background: #0002; }
+.goals h2 { font-size: 20px; color: var(--gold2); }
+.team-page h2.sub { font-size: 18px; color: var(--gold); margin-top: 6px; }
+.goal-form { gap: 8px; }
+.goal-form input, .goal-form select { font: inherit; padding: 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.goal-form .row { align-items: center; }
+.goal-form .row button { font-size: 12px; padding: 4px 8px; }
+.goal-pick { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.goal-pick li, .goal-items li { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 6px; font-size: 13px; }
+.goal-pick li:nth-child(odd), .goal-items li:nth-child(odd) { background: #ffffff06; }
+.goal-pick label, .goal-items label { flex: 1; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.goal-pick .chips, .goal-items .chips { max-width: 50%; }
+.goal-card { border: 1px solid var(--gold); border-radius: 12px; padding: 10px; background: linear-gradient(145deg, #d8ad6212, transparent); display: flex; flex-direction: column; gap: 6px; }
+.goal-card.achieved { border-color: var(--green); }
+.goal-card h3 { color: var(--gold2); font-size: 17px; }
+.goal-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.goal-members { display: flex; gap: 8px; }
+.gm { display: flex; flex-direction: column; align-items: center; } .gm .avatar { width: 28px; height: 28px; } .gm small { color: var(--muted); font-size: 11px; }
+.goal-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.goal-items li.done label { text-decoration: line-through; opacity: .5; }
+.goal-items .who { display: flex; gap: 4px; font-size: 11px; } .who .ok { color: var(--green); } .who .todo { color: #ff9f9f; }
+.goal-banner { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 10px; border-color: var(--gold); background: linear-gradient(90deg, #d8ad6222, transparent); text-align: left; flex-wrap: wrap; }
+.goal-banner .bar { width: 120px; flex: none; }
+.goal-banner small { color: var(--muted); } .goal-banner .nx { color: var(--world-bright); }
+.archived summary { cursor: pointer; }
+
+.goal-pick li.sec { flex-direction: column; align-items: stretch; background: none !important; padding: 4px 0; }
+.goal-pick .sec-head { color: var(--gold); font-size: 13px; padding: 2px 6px; }
+.goal-pick .sec-head small { color: var(--muted); }
+.goal-pick ul { list-style: none; margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 2px; }
+.goal-pick { max-height: 340px; }

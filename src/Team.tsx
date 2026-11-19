@@ -5,6 +5,7 @@ import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
 import { setShare, teamInfo } from './model/progress';
 import { iconInfo } from './model/icons';
+import { Goals } from './Goals';
 
 const GROUP = new Set(['combat-groupe', 'combat-vague-groupe', 'donjon', 'aide-personnes']);
 const isGroup = (i: ItemView) => !!i.dungeon?.name || (i.objectives ?? []).some(o => GROUP.has(o.type));
@@ -43,6 +44,8 @@ export function Team({ profileId, isDone }: { profileId: number; isDone: (p: num
         <h2>Équipe</h2>
         <label className="toggle share"><input type="checkbox" checked={!!team[profileId]} onChange={toggleShare} disabled={!teamLoaded} /> Partager ma progression avec l’équipe (lecture seule)</label>
       </div>
+      <Goals profileId={profileId} isDone={isDone} />
+      <h2 className="sub">Progression par Dofus</h2>
       {!teamLoaded && <p className="meta">Le partage passe par le serveur : il s’active une fois le site en ligne et synchronisé.</p>}
       {err && <p className="warn">{err}</p>}
 

@@ -38,3 +38,4 @@ export function labelOf(id: string): string {
   return id;
 }
 export const dofusOf = (id: string) => index.get(id)?.dofus ?? [];
+export const getItem = (id: string) => index.get(id)?.item;

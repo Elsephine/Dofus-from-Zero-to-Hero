@@ -12,6 +12,8 @@ import { Mates, OfferButton } from './Mates';
 import { Messages } from './Messages';
 import { onNewMessages, post as postMessage, useMessages, watchMessages } from './model/messages';
 import { Clock } from './Clock';
+import { GoalBanner } from './Goals';
+import { watchGoals } from './model/goals';
 import { Jobs } from './Jobs';
 import { Almanax } from './Almanax';
 import { Team } from './Team';
@@ -36,7 +38,7 @@ export function App() {
   useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
-  useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); }, [profile?.id]);
+  useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); }, [profile?.id]);
   // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
   useEffect(() => { const off = onNewMessages(ms => {
     if (view === 'messages') return;
@@ -95,6 +97,7 @@ export function App() {
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
         <MeMenu profile={profile} onOverlay={() => void openOverlay(profile.id, info?.id ?? lastDofus)} onChange={() => setActive(null)} onLogout={() => { logout(profile.id); setActive(null); }} />
       </header>
+      {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
       <Toasts />
 
       {view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
