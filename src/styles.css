@@ -787,3 +787,68 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 .next-card em { font-size: 12px; color: var(--muted); font-style: normal; }
 .next-show { margin-bottom: 10px; font-size: 12px; }
 @media (max-width: 900px) { .mainnav button { font-size: 9.5px; border-radius: 10px; margin: 2px; } .next-grid { grid-template-columns: 1fr; } .next-card { padding: 8px; } }
+
+/* ===== Icônes ===== */
+.mainnav .ic svg { width: 17px; height: 17px; vertical-align: -3px; }
+.top button svg { width: 17px; height: 17px; vertical-align: -3px; }
+.chip svg { vertical-align: -2px; }
+.tabs button svg { vertical-align: -2px; }
+.nc-ic { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; background: var(--world-glow); color: var(--world-accent); }
+.nc-ic svg { width: 22px; height: 22px; }
+.next-card.hot .nc-ic { background: var(--world-accent); color: var(--on-accent); }
+.next-actions h3 svg { color: var(--gold); }
+@media (max-width: 900px) { .mainnav .ic svg { width: 21px; height: 21px; } }
+
+/* ===== Œufs : anneau + couleur propre ===== */
+.egg-ring { position: relative; display: inline-grid; place-items: center; flex: none; color: var(--text); }
+.egg-ring svg { position: absolute; inset: 0; }
+.egg-ring img { width: 70%; height: 70%; object-fit: contain; position: relative; }
+.egg-ring.full svg circle:last-child { filter: drop-shadow(0 0 4px var(--gold)); }
+.egg { background: linear-gradient(180deg, color-mix(in srgb, var(--egg) 16%, var(--panel2)), var(--panel2) 75%) !important; border-color: color-mix(in srgb, var(--egg) 28%, var(--line)); }
+.egg:hover { border-color: var(--egg); box-shadow: 0 6px 18px color-mix(in srgb, var(--egg) 35%, transparent); }
+.egg.st-todo { background: var(--panel2) !important; }
+.egg img { width: auto; height: auto; }
+.egg .egg-ring img { width: 70%; height: 70%; }
+@media (max-width: 900px) { .egg .egg-ring { width: 66px !important; height: 66px !important; } .egg .egg-ring svg { width: 66px; height: 66px; } }
+
+/* Bandeau du Dofus à sa couleur */
+.reward { background: radial-gradient(circle at 70px 50%, color-mix(in srgb, var(--egg) 30%, transparent), transparent 260px),
+  linear-gradient(120deg, color-mix(in srgb, var(--egg) 12%, var(--panel)), var(--panel) 60%) !important; border-color: color-mix(in srgb, var(--egg) 45%, var(--line)) !important; }
+.reward > img { display: none; }
+.reward-egg { flex: none; filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--egg) 55%, transparent)); animation: egg-float 4s ease-in-out infinite; }
+.reward-egg .egg-ring img { width: 74%; height: 74%; }
+@keyframes egg-float { 50% { transform: translateY(-5px); } }
+.reward h2 { color: color-mix(in srgb, var(--egg) 55%, var(--text)) !important; font-size: 26px; }
+.egg-bar > span { background: linear-gradient(90deg, var(--egg), var(--gold)) !important; }
+.reward .chip.stat { background: color-mix(in srgb, var(--egg) 20%, transparent); color: var(--text); border-color: color-mix(in srgb, var(--egg) 40%, transparent); }
+@media (prefers-reduced-motion: reduce) { .reward-egg, .egg.complete img, .quest.next input { animation: none !important; } }
+
+/* ===== Quêtes en chemin d'aventure ===== */
+.section ul { position: relative; padding-left: 0; }
+.section ul::before { content: ''; position: absolute; left: 13px; top: 10px; bottom: 10px; width: 2px; background: var(--line); border-radius: 2px; }
+.quest { position: relative; }
+.quest .line { position: relative; padding-left: 4px; }
+.quest input[type="checkbox"] { position: relative; z-index: 1; appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0 2px; border-radius: 50%;
+  border: 2px solid var(--world-border); background: var(--panel2); display: grid; place-items: center; transition: background .2s, border-color .2s, transform .15s; }
+.quest input[type="checkbox"]:hover { border-color: var(--world-accent); transform: scale(1.1); }
+.quest input[type="checkbox"]:checked { background: var(--world-accent); border-color: var(--world-accent); }
+.quest input[type="checkbox"]:checked::after { content: ''; width: 5px; height: 9px; border: solid var(--on-accent); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.quest.done::before { content: ''; position: absolute; left: 13px; top: -4px; height: calc(100% + 4px); width: 2px; background: var(--world-accent); }
+.quest.next { background: linear-gradient(90deg, var(--world-glow), transparent 70%); border-radius: 10px; }
+.quest.next input[type="checkbox"] { border-color: var(--world-accent); animation: next-pulse 1.8s ease-in-out infinite; }
+.quest.next .qname { font-weight: 600; }
+@keyframes next-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--world-accent) 55%, transparent); } 50% { box-shadow: 0 0 0 7px transparent; } }
+
+/* ===== Dofus obtenu ! ===== */
+.trophy-back { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgb(20 8 10 / .55); backdrop-filter: blur(3px); animation: fade-in .3s; }
+.trophy { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 34px; border-radius: 22px; background: var(--panel); text-align: center;
+  border: 2px solid var(--gold); box-shadow: 0 0 60px color-mix(in srgb, var(--egg) 50%, transparent), 0 20px 50px #0007; animation: pop-in .5s cubic-bezier(.2, 1.6, .4, 1); }
+.trophy img { width: 150px; height: 150px; object-fit: contain; filter: drop-shadow(0 0 22px var(--egg)); animation: egg-spin 2.4s ease-in-out infinite; }
+.trophy h2 { font-size: 30px; color: var(--world-accent); }
+.trophy strong { font: 700 20px var(--title-font); color: var(--gold); }
+.trophy button { margin-top: 10px; }
+@keyframes egg-spin { 0%, 100% { transform: rotate(-8deg) scale(1); } 50% { transform: rotate(8deg) scale(1.06); } }
+@keyframes pop-in { from { transform: scale(.6); opacity: 0; } }
+@keyframes fade-in { from { opacity: 0; } }
+.egg-ring svg { width: 100%; height: 100%; }
+@media (max-width: 900px) { .reward-egg .egg-ring { width: 84px !important; height: 84px !important; } .reward h2 { font-size: 21px; } }

@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb } from 'lucide-react';
+import { EggRing, eggColor } from './ui/EggRing';
+import { burst, celebrateDofus, closeTrophy, useTrophy } from './model/celebrate';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
 import { getHistory, hasCode, isUnlocked, login, logout, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
@@ -61,7 +64,7 @@ export function App() {
     const k = `fzth:v2:finished:${profile.id}`;
     const now = catalog.filter(raw => { const v = viewFor(raw, profile.id, isDone); return v.itemIds.length > 0 && v.itemIds.every(id => isDone(profile.id, id)); }).map(r => r.id);
     let prev: string[] | null = null; try { prev = JSON.parse(localStorage.getItem(k) ?? 'null'); } catch { /* ignore */ }
-    if (prev) for (const id of now.filter(x => !prev!.includes(x))) void postMessage('done', `${profile.name} a terminé le ${catalog.find(c => c.id === id)?.name} !`, id);
+    if (prev) for (const id of now.filter(x => !prev!.includes(x))) { void postMessage('done', `${profile.name} a terminé le ${catalog.find(c => c.id === id)?.name} !`, id); celebrateDofus(catalog.find(c => c.id === id)?.name ?? 'Dofus', dofusInfo.find(d => d.id === id)?.image); }
     try { localStorage.setItem(k, JSON.stringify(now)); } catch { /* ignore */ }
   });
   const { unread } = useMessages();
@@ -94,13 +97,13 @@ export function App() {
       <header className="top" style={{ '--hero': `url(${import.meta.env.BASE_URL}persos/${profile.image})` } as React.CSSProperties}>
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages', 'succes'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
-          <button className={view === 'jobs' ? 'on' : ''} title="Métiers & ressources" onClick={() => setView('jobs')}><span className="ic">⚒</span><span className="lbl">Métiers</span></button>
-          <button className={view === 'succes' ? 'on' : ''} title="Succès" onClick={() => setView('succes')}><span className="ic">🏆</span><span className="lbl">Succès</span></button>
-          <button className={view === 'team' ? 'on' : ''} title="Équipe" onClick={() => setView('team')}><span className="ic">👥</span><span className="lbl">Équipe</span></button>
-          <button className={view === 'almanax' ? 'on' : ''} title="Almanax" onClick={() => setView('almanax')}><span className="ic">📅</span><span className="lbl">Almanax</span></button>
-          <button className={view === 'messages' ? 'on' : ''} title="Messages" onClick={() => setView('messages')}><span className="ic">💬{unread > 0 && <span className="badge">{unread}</span>}</span><span className="lbl">Messages</span></button>
-          <button className={view === 'tools' ? 'on' : ''} title="Outils" onClick={() => setView('tools')}><span className="ic">🧰</span><span className="lbl">Outils</span></button>
+          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages', 'succes'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic"><Egg /></span><span className="lbl">Dofus</span></button>
+          <button className={view === 'jobs' ? 'on' : ''} title="Métiers & ressources" onClick={() => setView('jobs')}><span className="ic"><Hammer /></span><span className="lbl">Métiers</span></button>
+          <button className={view === 'succes' ? 'on' : ''} title="Succès" onClick={() => setView('succes')}><span className="ic"><Trophy /></span><span className="lbl">Succès</span></button>
+          <button className={view === 'team' ? 'on' : ''} title="Équipe" onClick={() => setView('team')}><span className="ic"><Users /></span><span className="lbl">Équipe</span></button>
+          <button className={view === 'almanax' ? 'on' : ''} title="Almanax" onClick={() => setView('almanax')}><span className="ic"><CalendarDays /></span><span className="lbl">Almanax</span></button>
+          <button className={view === 'messages' ? 'on' : ''} title="Messages" onClick={() => setView('messages')}><span className="ic"><MessageCircle />{unread > 0 && <span className="badge">{unread}</span>}</span><span className="lbl">Messages</span></button>
+          <button className={view === 'tools' ? 'on' : ''} title="Outils" onClick={() => setView('tools')}><span className="ic"><Wrench /></span><span className="lbl">Outils</span></button>
         </nav>
         <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
         <OnlineNow profileId={profile.id} />
@@ -113,6 +116,7 @@ export function App() {
       </header>
       {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
       <Toasts />
+      <TrophyModal />
 
       {view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
@@ -180,16 +184,33 @@ function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone:
   const almost = d ? almostDone(d, profileId, isDone)[0] : undefined;
   const ev = d ? eventStatus(d, profileId, isDone).find(x => x.days <= 30 && x.left.length) : undefined;
   const cards: JSX.Element[] = [];
-  if (close) cards.push(<button key="dofus" className="next-card" onClick={() => onOpen(close.raw.id)}><span className="nc-ic">🥚</span><span><small>Dofus le plus proche</small><strong>{close.raw.name} : plus que {close.left.length} étape{close.left.length > 1 ? 's' : ''}</strong><em>Prochaine : {close.left[0].name}</em></span></button>);
-  if (dj) cards.push(<button key="dj" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic">⛫</span><span><small>Donjon à préparer</small><strong>{dj.name}</strong><em>{dj.left} succès à cumuler en équipe{dj.key ? ` · 🗝 ${dj.key}` : ''}</em></span></button>);
-  if (almost) cards.push(<button key="ach" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic">🏆</span><span><small>Succès presque fini</small><strong>{almost.a.n}</strong><em>{almost.done}/{almost.total} objectifs · {almost.a.p} pts</em></span></button>);
-  if (ev) cards.push(<button key="ev" className="next-card hot" onClick={() => onOpen('succes')}><span className="nc-ic">⏰</span><span><small>{ev.days === 0 ? 'C’est la période' : `Dans ~${ev.days} jours`}</small><strong>Événement {ev.e.label}</strong><em>{ev.left.length} succès · {ev.pts} pts à prendre</em></span></button>);
-  cards.push(<button key="alm" className="next-card" onClick={() => onOpen('almanax')}><span className="nc-ic">📅</span><span><small>Chaque jour</small><strong>Offrande Almanax</strong><em>Voir l’offrande et le bonus du jour</em></span></button>);
+  if (close) cards.push(<button key="dofus" className="next-card" onClick={() => onOpen(close.raw.id)}><span className="nc-ic"><Egg /></span><span><small>Dofus le plus proche</small><strong>{close.raw.name} : plus que {close.left.length} étape{close.left.length > 1 ? 's' : ''}</strong><em>Prochaine : {close.left[0].name}</em></span></button>);
+  if (dj) cards.push(<button key="dj" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic"><Castle /></span><span><small>Donjon à préparer</small><strong>{dj.name}</strong><em>{dj.left} succès à cumuler en équipe{dj.key ? ` · 🗝 ${dj.key}` : ''}</em></span></button>);
+  if (almost) cards.push(<button key="ach" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic"><Trophy /></span><span><small>Succès presque fini</small><strong>{almost.a.n}</strong><em>{almost.done}/{almost.total} objectifs · {almost.a.p} pts</em></span></button>);
+  if (ev) cards.push(<button key="ev" className="next-card hot" onClick={() => onOpen('succes')}><span className="nc-ic"><AlarmClock /></span><span><small>{ev.days === 0 ? 'C’est la période' : `Dans ~${ev.days} jours`}</small><strong>Événement {ev.e.label}</strong><em>{ev.left.length} succès · {ev.pts} pts à prendre</em></span></button>);
+  cards.push(<button key="alm" className="next-card" onClick={() => onOpen('almanax')}><span className="nc-ic"><CalendarDays /></span><span><small>Chaque jour</small><strong>Offrande Almanax</strong><em>Voir l’offrande et le bonus du jour</em></span></button>);
   return (
     <section className="next-actions">
-      <h3>💡 Aujourd’hui, je te propose <button className="link-like" onClick={() => setHidden(today)}>masquer pour aujourd’hui</button></h3>
+      <h3><Lightbulb size={18} /> Aujourd’hui, je te propose <button className="link-like" onClick={() => setHidden(today)}>masquer pour aujourd’hui</button></h3>
       <div className="next-grid">{cards}</div>
     </section>
+  );
+}
+
+/** Grande annonce quand un Dofus vient d'être terminé. */
+function TrophyModal() {
+  const t = useTrophy();
+  if (!t) return null;
+  return (
+    <div className="trophy-back" onClick={closeTrophy}>
+      <div className="trophy" style={{ '--egg': eggColor(t.image) } as React.CSSProperties} onClick={e => e.stopPropagation()}>
+        <p className="eyebrow">Félicitations</p>
+        {t.image && <img src={img(t.image)} alt="" />}
+        <h2>Dofus obtenu !</h2>
+        <strong>{t.name}</strong>
+        <button className="primary" onClick={closeTrophy}>Continuer l’aventure</button>
+      </div>
+    </div>
   );
 }
 
@@ -197,7 +218,7 @@ function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone:
 function ThemeToggle() {
   const [theme, setTheme] = useState(() => document.body.dataset.theme ?? 'light');
   const flip = () => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); document.body.dataset.theme = t; try { localStorage.setItem('fzth:v2:theme', t); } catch { /* ignore */ } };
-  return <button className="theme-toggle" onClick={flip} title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}>{theme === 'dark' ? '☀' : '🌙'}</button>;
+  return <button className="theme-toggle" onClick={flip} title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}>{theme === 'dark' ? <Sun /> : <Moon />}</button>;
 }
 
 /** Les 3 personnages côte à côte avec leur avancée (Dofus terminés et quêtes validées). */
@@ -220,7 +241,7 @@ function TeamStrip({ profileId, isDone }: { profileId: number; isDone: (p: numbe
               <strong>{p.name}</strong>
               <small>{p.classe}</small>
               {known ? <>
-                <span className="ts-eggs">🥚 {eggs} Dofus · {pct} %</span>
+                <span className="ts-eggs"><Egg size={12} /> {eggs} Dofus · {pct} %</span>
                 <span className="ts-bar"><i style={{ width: `${pct}%` }} /></span>
               </> : <small className="ts-hidden">Progression pas encore partagée</small>}
             </div>
@@ -254,11 +275,10 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
       <div className="grid">
         {stats.filter(x => filter === 'all' || x.state === filter).map(({ d, c, pct, next }) => {
           return (
-            <button key={d.id} className={`egg st-${pct === 100 ? 'done' : pct > 0 ? 'doing' : 'todo'}${c ? '' : ' soon'}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={next ? `${d.name}\nProchaine : ${next.name}` : d.name}>
-              {d.image && <img src={img(d.image)} alt="" loading="lazy" />}
+            <button key={d.id} style={{ '--egg': eggColor(d.image) } as React.CSSProperties} className={`egg st-${pct === 100 ? 'done' : pct > 0 ? 'doing' : 'todo'}${c ? '' : ' soon'}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={next ? `${d.name}\nProchaine : ${next.name}` : d.name}>
+              {d.image && <EggRing src={img(d.image)!} image={d.image} pct={pct} size={86} />}
               <span className="name">{d.name}</span>
-              {c ? <span className="ring"><span style={{ width: `${pct}%` }} /></span> : <span className="chip">bientôt</span>}
-              {c && <small>{pct} %</small>}
+              {c ? <small>{pct} %</small> : <span className="chip">bientôt</span>}
             </button>
           );
         })}
@@ -298,9 +318,9 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
   const total = dofus?.itemIds.length ?? 0;
   return (
     <main className="dofus-page">
-      <section className="reward panel">
+      <section className="reward panel" style={{ '--egg': eggColor(info.image) } as React.CSSProperties}>
         <button className="back" onClick={onBack}>← Tous les Dofus</button>
-        {info.image && <img src={img(info.image)} alt="" />}
+        {info.image && <span className="reward-egg"><EggRing src={img(info.image)!} image={info.image} pct={total ? (done / total) * 100 : 0} size={124} stroke={6} /></span>}
         <div className="reward-text">
           <h2>{info.name} {dofus?.url && <a href={dofus.url} target="_blank" rel="noreferrer" className="dpln">DPLN ↗</a>}</h2>
           <p className="meta">
@@ -310,7 +330,7 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
           </p>
           <div className="stats">{info.stats.map(s => <span key={s} className="chip stat">{s}</span>)}</div>
           {info.effect && <p className="effect">{info.effect}</p>}
-          {dofus && <span className="bar big"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></span>}
+          {dofus && <span className="bar big egg-bar"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></span>}
         </div>
         {raw && !!raw.choices.length && (
           <div className="choices">
@@ -366,7 +386,7 @@ function QuestList({ dofus, profileId, hideDone, setHideDone, isDone }: {
           return (
             <div key={s.id} className="section">
               <h3>{s.title} <small>{s.items.filter(i => isDone(profileId, i.id)).length}/{s.items.length}</small></h3>
-              <ul>{items.map((i, n) => <QuestRow key={i.id} item={i} done={isDone(profileId, i.id)} grouped={!!i.group && items[n - 1]?.group === i.group}
+              <ul>{items.map((i, n) => <QuestRow key={i.id} item={i} done={isDone(profileId, i.id)} grouped={!!i.group && items[n - 1]?.group === i.group} next={next?.id === i.id}
                 onToggle={() => toggle(profileId, i.id)} />)}</ul>
             </div>
           );
@@ -508,7 +528,7 @@ function Journal({ profileId }: { profileId: number }) {
   const time = (iso: string) => { const d = new Date(iso); const today = new Date().toDateString() === d.toDateString(); return d.toLocaleString('fr-FR', today ? { hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
   return (
     <div className="dd">
-      <button onClick={() => setOpen(!open)} title="Dernières actions">🕘</button>
+      <button onClick={() => setOpen(!open)} title="Dernières actions"><History /></button>
       {open && (
         <div className="dd-menu panel journal">
           <h3>Dernières actions</h3>
@@ -534,7 +554,7 @@ function Bell({ onOpenTools }: { onOpenTools: () => void }) {
   const [settings, setSettings] = useState(false);
   return (
     <div className="bell-wrap dd">
-      <button className={`bell${unseen.length ? ' has' : ''}`} onClick={() => setOpen(!open)} title="Notifications de l’équipe">🔔{unseen.length > 0 && <span className="badge">{unseen.length}</span>}</button>
+      <button className={`bell${unseen.length ? ' has' : ''}`} onClick={() => setOpen(!open)} title="Notifications de l’équipe"><BellIcon />{unseen.length > 0 && <span className="badge">{unseen.length}</span>}</button>
       {open && (
         <div className="bell-menu panel">
           <h3>Notifications <button className="bell-gear" onClick={() => setSettings(!settings)} title="Choisir les catégories">⚙</button></h3>
@@ -600,12 +620,12 @@ function SyncBadge({ status, lastSync, pending }: { status: SyncStatus; lastSync
   return <span className={`sync ${status}`} title={txt[status]}>●<span className="sync-txt"> {txt[status]}</span></span>;
 }
 
-export function QuestRow({ item, done, grouped, onToggle }: { item: ItemView; done: boolean; grouped?: boolean; onToggle: () => void }) {
+export function QuestRow({ item, done, grouped, next, onToggle }: { item: ItemView; done: boolean; grouped?: boolean; next?: boolean; onToggle: () => void }) {
   return (
-    <li className={`quest${done ? ' done' : ''}${item.group ? ' in-group' : ''}${grouped ? ' group-cont' : ''}`}>
+    <li className={`quest${done ? ' done' : ''}${next ? ' next' : ''}${item.group ? ' in-group' : ''}${grouped ? ' group-cont' : ''}`}>
       {item.hint && <div className="hint">ℹ {item.hint}</div>}
       <label className="line">
-        <input type="checkbox" checked={done} onChange={onToggle} />
+        <input type="checkbox" checked={done} onChange={e => { if (!done) burst(e.currentTarget); onToggle(); }} />
         <span className="qname">
           {item.kind === 'achievement' && <span className="chip ach">Succès</span>}
           {item.url ? <a href={item.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{item.name}</a> : item.name}
@@ -614,7 +634,7 @@ export function QuestRow({ item, done, grouped, onToggle }: { item: ItemView; do
         <span className="chips">
           {item.dungeon?.captureOcre && <span className="chip ocre" title="Donjon à capturer pour le Dofus Ocre">Ocre</span>}
           {item.dungeon?.tourDuMonde && <span className="chip tdm" title="Donjon demandé dans le Tour du monde">Tour du monde</span>}
-          {item.dungeon?.name && <span className="chip dj">⛫ {item.dungeon.name}</span>}
+          {item.dungeon?.name && <span className="chip dj"><Castle size={12} /> {item.dungeon.name}</span>}
           {item.tag && <span className="chip">{item.tag}</span>}
           {item.objectives?.filter(o => !(o.type === 'donjon' && item.dungeon?.name)).map((o, k) => {
             const ic = iconInfo(o.type);

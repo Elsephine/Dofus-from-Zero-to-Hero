@@ -1,5 +1,7 @@
 // Onglet Succès : catalogue complet, presque finis, donjons (clé + plan), classement de l'équipe, événements à ne pas rater.
 import { useMemo, useState } from 'react';
+import { AlarmClock, Castle, Hourglass, Medal, ScrollText } from 'lucide-react';
+import { burst } from './model/celebrate';
 import type { Ach } from './data/jeu/succes';
 import { GAME_VERSION } from './data/jeu/donjons';
 import { achKey, achProgress, almostDone, daysUntil, EVENTS, norm, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
@@ -9,7 +11,7 @@ import { profiles } from './model/profiles';
 import { teamInfo, toggle } from './model/progress';
 import { DungeonAchievements } from './TeamLive';
 
-const TABS: [string, string][] = [['all', '📜 Tous les succès'], ['almost', '⏳ Presque finis'], ['dj', '⛫ Donjons'], ['rank', '🏅 Classement'], ['alerts', '⏰ À ne pas rater']];
+const TABS: [string, string, typeof ScrollText][] = [['all', 'Tous les succès', ScrollText], ['almost', 'Presque finis', Hourglass], ['dj', 'Donjons', Castle], ['rank', 'Classement', Medal], ['alerts', 'À ne pas rater', AlarmClock]];
 const avatar = (img: string) => `${import.meta.env.BASE_URL}persos/${img}`;
 
 export function Achievements({ profileId, isDone }: { profileId: number; isDone: IsDone }) {
@@ -23,7 +25,7 @@ export function Achievements({ profileId, isDone }: { profileId: number; isDone:
         <div><p className="eyebrow">Chasse aux succès</p><h2>Succès</h2></div>
         {d && mine && <div className="ach-score"><strong>{mine.pts.toLocaleString('fr-FR')}</strong><span>points · {mine.n}/{d.list.length} succès</span></div>}
       </div>
-      <nav className="tabs always">{TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => pick(k)}>{l}</button>)}</nav>
+      <nav className="tabs always">{TABS.map(([k, l, I]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => pick(k)}><I size={15} /> {l}</button>)}</nav>
       {!d && tab !== 'dj' ? <p className="meta">Chargement des succès…</p> : (
         <div className="ach-body">
           {tab === 'all' && d && <Catalogue d={d} profileId={profileId} isDone={isDone} />}
@@ -47,7 +49,7 @@ export function AchRow({ d, a, profileId, isDone, showCat }: { d: AchData; a: Ac
   return (
     <li className={`ach-row${pr.complete ? ' done' : ''}`}>
       <div className="ach-main">
-        <input type="checkbox" checked={pr.complete} onChange={() => toggle(profileId, achKey(a.id))} title="J’ai ce succès" />
+        <input type="checkbox" checked={pr.complete} onChange={e => { if (!pr.complete) burst(e.currentTarget, true); toggle(profileId, achKey(a.id)); }} title="J’ai ce succès" />
         <div className="ach-txt" onClick={() => a.o && setOpen(!open)} role={a.o ? 'button' : undefined}>
           <strong>{a.n}</strong> <span className="pts">{a.p} pts</span>
           {showCat && <small className="meta"> · {d.top(a.c).name}{d.catOf.get(a.c)!.parent ? ` › ${d.catOf.get(a.c)!.name}` : ''}</small>}
