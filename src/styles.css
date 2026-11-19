@@ -1223,3 +1223,16 @@ body[data-theme="dark"] .ach-head .pts { color: var(--gold2); }
 .ach-head.done .ach-head-name { color: var(--ok2); }
 .ach-head.done > svg { color: var(--ok2); }
 .path-node.ach { text-transform: none; font-size: 11.5px; letter-spacing: .01em; }
+
+/* Overlay rangé par succès */
+.ov-groupby { flex: none; display: flex; gap: 4px; }
+.ov-groupby button { flex: 1; font-size: 12px; padding: 4px 8px; border-radius: 8px; }
+.ov-groupby button.on { background: var(--world-accent); color: var(--on-accent); border-color: var(--world-accent); }
+.ov-group { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+.ov-group.ach { color: var(--gold2); }
+.ov-group small { font-weight: 500; color: var(--muted); margin-left: 4px; }
+.ov-group.big { font: 600 13px var(--title-font); letter-spacing: .02em; }
+.ov-list li .ov-group { grid-column: 1 / -1; margin: 2px 0 2px; }
+.ov-list li.new-group { margin-top: 6px; }
+.ov-validate { flex: none; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--gold); background: rgb(216 173 98 / .15); }
+.ov-validate button { font-size: 11px; padding: 2px 8px; margin-left: auto; }

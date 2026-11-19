@@ -8,6 +8,8 @@ import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
 import { sync, toggle, useProgress } from './model/progress';
 import { overlayClosed, overlayOpened } from './model/overlayState';
+import { achKey, useAchData } from './model/achievements';
+import { GROUP_KEY, groupQuests, readGroupBy, type GroupBy } from './model/questGroups';
 import { iconInfo } from './model/icons';
 import { ALL_JOB_RES, jobKey } from './model/jobs';
 import { qtyOf, setQty, teamInfo } from './model/progress';
@@ -100,7 +102,13 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
   const profile = profiles.find(p => p.id === profileId)!;
   const raw = catalog.find(c => c.id === dofusId) ?? catalog[0];
   const v = viewFor(raw, profileId, isDone);
-  const all = v.sections.flatMap(s => s.items.map(i => ({ ...i, section: s.title })));
+  // Même rangement que la page du Dofus : par succès (par défaut) ou par étape.
+  const achD = useAchData();
+  const [groupBy, setGroupByState] = useState<GroupBy>(readGroupBy);
+  const setGroupBy = (g: GroupBy) => { setGroupByState(g); try { localStorage.setItem(GROUP_KEY, JSON.stringify(g)); } catch { /* ignore */ } };
+  const groups = groupQuests(v.sections, groupBy, achD);
+  const all = groups.flatMap(g => g.items.map(i => ({ ...i, section: g.title, gid: g.id })));
+  const groupOf = new Map(groups.map(g => [g.id, g]));
   const done = v.itemIds.filter(id => isDone(profileId, id)).length;
   // Coéquipiers qui partagent leur progression : on montre ce qu'ils ont déjà fait.
   const { team } = teamInfo();
@@ -138,6 +146,16 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
     }
   }, [sig, raw.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [first, ...rest] = next;
+  const GroupHead = ({ gid, big }: { gid: string; big?: boolean }) => {
+    const g = groupOf.get(gid)!; const n = g.items.filter(i => isDone(profileId, i.id)).length;
+    return (
+      <span className={`ov-group${big ? ' big' : ''}${g.ach ? ' ach' : ''}`}>
+        {g.ach ? '🏆 ' : ''}{g.title} <small>{n}/{g.items.length}{g.ach ? ` · ${g.ach.pts} pts` : ''}</small>
+      </span>
+    );
+  };
+  // Succès dont toutes les quêtes de ce Dofus sont faites mais pas encore cochés : petit rappel.
+  const toValidate = groups.filter(g => g.ach && g.ach.total <= g.items.length && g.items.every(i => isDone(profileId, i.id)) && !isDone(profileId, achKey(g.ach.id))).slice(0, 2);
   const matesOf = (id: string) => mates.length > 0 && (
     <span className="ov-mates">{mates.map(m => { const ok = isDone(m.id, id); return <img key={m.id} src={abs('persos/' + m.image)} alt={m.name} className={ok ? 'ok' : 'no'} title={`${m.name} : ${ok ? 'déjà faite ✓' : 'pas encore'}`} />; })}</span>
   );
@@ -180,6 +198,13 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
           </button>
         ))}
       </nav>
+      <div className="ov-groupby">
+        <button className={groupBy === 'succes' ? 'on' : ''} onClick={() => setGroupBy('succes')}>🏆 Par succès</button>
+        <button className={groupBy === 'etapes' ? 'on' : ''} onClick={() => setGroupBy('etapes')}>📋 Par étape</button>
+      </div>
+      {toValidate.map(g => (
+        <div key={g.id} className="ov-validate">🏆 « {g.title} » est complet ! <button onClick={() => toggle(profileId, achKey(g.ach!.id), true)}>Cocher le succès</button></div>
+      ))}
       {flash.length > 0 && <div className="ov-flash">{flash.map(f => <span key={f}>✓ {f}</span>)}</div>}
       {mates.length > 0 && (behindCount > 0 || behindOnly) && (
         <button className={`ov-behind${behindOnly ? ' on' : ''}`} onClick={() => setBehindOnly(!behindOnly)}>
@@ -188,7 +213,8 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
       )}
       {first ? (
         <article className="ov-next">
-          <span className="ov-label">Prochaine quête · {first.section}</span>
+          <span className="ov-label">Prochaine quête</span>
+          <GroupHead gid={first.gid} big />
           {first.hint && <p className="ov-hint">ℹ {first.hint}</p>}
           <div className="ov-next-main">
             <button className="ov-check big" onClick={() => toggle(profileId, first.id, true)} title="Valider cette quête">✓</button>
@@ -199,8 +225,9 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
         </article>
       ) : <p className="ov-done">{behindOnly ? '✓ Plus aucun retard sur l’équipe ici !' : '🎉 Ce Dofus est terminé !'}</p>}
       <ul className="ov-list">
-        {rest.map(i => (
-          <li key={i.id}>
+        {rest.map((i, n) => (
+          <li key={i.id} className={(n === 0 ? first : rest[n - 1])?.gid !== i.gid ? 'new-group' : ''}>
+            {(n === 0 ? first : rest[n - 1])?.gid !== i.gid && <GroupHead gid={i.gid} />}
             <button className="ov-check" onClick={() => toggle(profileId, i.id, true)} title="Valider">✓</button>
             <span className="ov-name">{i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.name}</a> : i.name}{matesOf(i.id)}</span>
             {chipsOf(i)}

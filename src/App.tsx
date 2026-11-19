@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered } from 'lucide-react';
 import { tagIcon } from './ui/QuestTags';
+import { GROUP_KEY, groupQuests, type GroupBy, type QuestGroup } from './model/questGroups';
 import { applyNow, forgetReopen, useOverlayState } from './model/overlayState';
 import { install, useInstall } from './model/install';
 import { ReportButton, ReportDialog } from './Report';
@@ -485,22 +486,10 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
   const bulk = (v: boolean) => { if (!dofus) return; for (const id of dofus.itemIds) toggle(profileId, id, v, { silent: true }); setConfirm(''); };
   const ask = (k: 'all' | 'reset') => { if (confirm === k) bulk(k === 'all'); else { setConfirm(k); setTimeout(() => setConfirm(c => (c === k ? '' : c)), 4000); } };
   // Regroupement des quêtes : par succès (comme Tougli) ou par étape du guide.
-  const [groupBy, setGroupBy] = remember<'succes' | 'etapes'>('fzth:v2:groupBy', 'succes');
+  const [groupBy, setGroupBy] = remember<GroupBy>(GROUP_KEY, 'succes');
   const achD = useAchData();
-  type Group = { id: string; title: string; items: ItemView[]; ach?: { id: number; pts: number; total: number } };
-  const groups: Group[] = (() => {
-    if (!dofus) return [];
-    if (groupBy === 'etapes' || !achD) return dofus.sections.map(sec => ({ id: sec.id, title: sec.title, items: sec.items }));
-    const out: Group[] = []; const byKey = new Map<string, Group>();
-    for (const sec of dofus.sections) for (const it of sec.items) {
-      const a = achsForQuest(achD, it.name)[0];
-      const k = a ? `a${a.id}` : `s${sec.id}`;
-      let g = byKey.get(k);
-      if (!g) { g = a ? { id: k, title: a.n, items: [], ach: { id: a.id, pts: a.p, total: a.o?.length ?? 1 } } : { id: k, title: `${sec.title} · autres quêtes`, items: [] }; byKey.set(k, g); out.push(g); }
-      if (!g.items.some(x => x.id === it.id)) g.items.push(it);
-    }
-    return out;
-  })();
+  type Group = QuestGroup;
+  const groups: Group[] = dofus ? groupQuests(dofus.sections, groupBy, achD) : [];
   const groupDone = (g: Group) => (g.ach && isDone(profileId, achKey(g.ach.id))) || g.items.every(i => isDone(profileId, i.id));
   const goTo = (id: string) => { setClosed(c => ({ ...c, [id]: false })); setTimeout(() => document.getElementById('sec-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); };
   return (
