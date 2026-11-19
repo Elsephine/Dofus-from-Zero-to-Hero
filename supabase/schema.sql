@@ -1,12 +1,15 @@
--- From Zero to Hero — schéma v2. À exécuter UNE fois dans Supabase > SQL Editor.
--- 1) Remplace MON-CODE à la dernière ligne par le code d'équipe de votre choix (à donner à Volrod et Zepharyen).
--- 2) Exécute tout le fichier.
--- Les tables ne sont PAS accessibles directement avec la clé publique : tout passe par les 2 fonctions ci-dessous,
--- qui refusent un mauvais code d'équipe. L'ancienne table team_progress n'est pas modifiée.
+-- From Zero to Hero — schéma v2. À exécuter UNE fois dans Supabase > SQL Editor (tout le fichier, sans rien modifier).
+-- Chaque personnage a son propre code, choisi par son joueur à la première connexion sur le site.
+-- Les tables ne sont PAS accessibles directement avec la clé publique : tout passe par les fonctions ci-dessous,
+-- qui vérifient le code du personnage. L'ancienne table team_progress n'est pas modifiée.
+--
+-- Code oublié : supprimer la ligne du personnage, puis il en choisira un nouveau à la prochaine connexion
+-- (0 = Furionette, 1 = Volrod, 2 = Zepharyen) :   delete from public.fzth_profile_code where profile_id = 0;
 
-create table if not exists public.fzth_team (
-  id integer primary key default 1 check (id = 1),
-  code_hash text not null
+create table if not exists public.fzth_profile_code (
+  profile_id integer primary key check (profile_id between 0 and 2),
+  code_hash text not null,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.fzth_progress (
@@ -17,32 +20,59 @@ create table if not exists public.fzth_progress (
   primary key (profile_id, item_id)
 );
 
-alter table public.fzth_team enable row level security;
+alter table public.fzth_profile_code enable row level security;
 alter table public.fzth_progress enable row level security;
-revoke all on public.fzth_team, public.fzth_progress from anon, authenticated;
+revoke all on public.fzth_profile_code, public.fzth_progress from anon, authenticated;
 
-create or replace function public.fzth_check(p_code text) returns void
+create or replace function public.fzth_hash(p_profile integer, p_code text) returns text
+language sql immutable as $$
+  select encode(sha256(convert_to(p_profile::text || ':' || coalesce(p_code, ''), 'UTF8')), 'hex')
+$$;
+
+-- Le personnage a-t-il déjà un code ? (pour afficher « choisis ton code » ou « entre ton code »)
+create or replace function public.fzth_status(p_profile integer) returns boolean
+language sql security definer set search_path = public as $$
+  select exists (select 1 from fzth_profile_code where profile_id = p_profile)
+$$;
+
+create or replace function public.fzth_check(p_profile integer, p_code text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from fzth_team where code_hash = encode(sha256(convert_to(coalesce(p_code, ''), 'UTF8')), 'hex')) then
-    raise exception 'code d''équipe invalide';
+  if not exists (select 1 from fzth_profile_code where profile_id = p_profile and code_hash = fzth_hash(p_profile, p_code)) then
+    perform pg_sleep(0.7); -- ralentit les essais au hasard
+    raise exception 'code invalide';
   end if;
 end $$;
 
-create or replace function public.fzth_get(p_code text)
+-- Première connexion : enregistre le code choisi. Ensuite : vérifie le code. Renvoie 'created' ou 'ok'.
+create or replace function public.fzth_login(p_profile integer, p_code text) returns text
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_profile not between 0 and 2 then raise exception 'personnage inconnu'; end if;
+  if not exists (select 1 from fzth_profile_code where profile_id = p_profile) then
+    if length(coalesce(p_code, '')) < 4 then raise exception 'code trop court'; end if;
+    insert into fzth_profile_code (profile_id, code_hash) values (p_profile, fzth_hash(p_profile, p_code))
+    on conflict (profile_id) do nothing;
+    if found then return 'created'; end if;
+  end if;
+  perform fzth_check(p_profile, p_code);
+  return 'ok';
+end $$;
+
+create or replace function public.fzth_get(p_profile integer, p_code text)
 returns table (profile_id integer, item_id text, done boolean, updated_at timestamptz)
 language plpgsql security definer set search_path = public as $$
 begin
-  perform fzth_check(p_code);
-  return query select p.profile_id, p.item_id, p.done, p.updated_at from fzth_progress p;
+  perform fzth_check(p_profile, p_code);
+  return query select p.profile_id, p.item_id, p.done, p.updated_at from fzth_progress p where p.profile_id = p_profile;
 end $$;
 
 -- p_items : [{ "id": "...", "done": true, "at": "2026-11-19T10:00:00Z" }, ...]
 -- Chaque objectif garde la modification la plus récente (aucun écrasement global).
-create or replace function public.fzth_set(p_code text, p_profile integer, p_items jsonb) returns void
+create or replace function public.fzth_set(p_profile integer, p_code text, p_items jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  perform fzth_check(p_code);
+  perform fzth_check(p_profile, p_code);
   if jsonb_array_length(p_items) > 2000 then raise exception 'trop d''objectifs en une fois'; end if;
   insert into fzth_progress as t (profile_id, item_id, done, updated_at)
   select p_profile, x->>'id', (x->>'done')::boolean, least(coalesce((x->>'at')::timestamptz, now()), now() + interval '5 minutes')
@@ -52,8 +82,7 @@ begin
     where excluded.updated_at >= t.updated_at;
 end $$;
 
-revoke all on function public.fzth_check(text), public.fzth_get(text), public.fzth_set(text, integer, jsonb) from public;
-grant execute on function public.fzth_get(text), public.fzth_set(text, integer, jsonb) to anon;
-
-insert into public.fzth_team (id, code_hash) values (1, encode(sha256(convert_to('MON-CODE', 'UTF8')), 'hex'))
-on conflict (id) do update set code_hash = excluded.code_hash;
+revoke all on function public.fzth_check(integer, text), public.fzth_status(integer), public.fzth_login(integer, text),
+  public.fzth_get(integer, text), public.fzth_set(integer, text, jsonb) from public;
+grant execute on function public.fzth_status(integer), public.fzth_login(integer, text),
+  public.fzth_get(integer, text), public.fzth_set(integer, text, jsonb) to anon;

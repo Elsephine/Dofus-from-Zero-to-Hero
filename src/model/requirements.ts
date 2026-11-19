@@ -18,7 +18,7 @@ export function requirements(dofus: DofusView, isDone: (id: string) => boolean, 
     if (i.dungeon?.name && !objs.some(o => o.type === 'donjon')) objs.push({ type: 'donjon', label: i.dungeon.name });
     for (const o of objs) {
       const info = iconInfo(o.type);
-      const k = info.family === 'donjon' && o.label && !/^x?\d+$/.test(o.label) ? 'donjon:' + o.label.toLowerCase() : o.type;
+      const k = info.family === 'donjon' && o.label && !/^x?\d+$/.test(o.label) ? 'donjon:' + o.label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '') : o.type;
       let e = map.get(k);
       if (!e) {
         e = { type: o.type, label: info.family === 'donjon' && o.label ? o.label : info.label, count: 0, details: [] };

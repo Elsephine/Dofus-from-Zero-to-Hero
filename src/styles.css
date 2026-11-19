@@ -29,6 +29,10 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
 .home-link { background: none; border: none; padding: 0; color: var(--gold2); font: inherit; }
 .top .sym { color: var(--world-accent); }
 .profiles { display: flex; gap: 6px; flex: 1; }
+.me { display: flex; align-items: center; gap: 8px; flex: 1; }
+.me small { color: var(--muted); }
+.me button { font-size: 12px; padding: 4px 8px; }
+.home h2 small { font: 12px system-ui, sans-serif; color: var(--muted); margin-left: 6px; }
 .profiles button small { color: var(--muted); }
 .profiles button.on { border-color: var(--world-accent); box-shadow: 0 0 12px var(--world-glow); }
 .sync { font-size: 12px; }
@@ -157,3 +161,18 @@ input[type="checkbox"] { accent-color: var(--world-accent); width: 16px; height:
 .portrait-info strong { font: 20px Georgia, serif; color: #fff; }
 .portrait-info small { color: var(--muted); font-size: 12px; }
 @media (max-width: 900px) { .portrait { height: 140px; } .grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } .egg img { width: 56px; height: 56px; } .portrait-info strong { font-size: 16px; } }
+
+/* Accueil : choix du personnage */
+body[data-world="none"] { --world-accent: #d8ad62; --world-bright: #f0cf8c; --world-glow: rgba(216, 173, 98, .18); --world-border: #4b3d2a; }
+.landing { justify-content: center; align-items: center; gap: 14px; }
+.landing-title { font-size: 34px; color: var(--gold2); text-shadow: 0 0 24px #d8ad6255; }
+.landing-sub { margin: 0; color: var(--muted); }
+.landing .team { width: min(1100px, 100%); }
+.landing .portrait { height: min(62vh, 520px); }
+.landing .portrait:hover { border-color: var(--gold); box-shadow: 0 0 24px #d8ad6244; }
+.landing .portrait-info strong { font-size: 26px; }
+.avatar.big { width: 30px; height: 30px; }
+.avatar.huge { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; align-self: center; border: 2px solid var(--gold); }
+.code-box { align-items: stretch; text-align: center; }
+.code-box h2 { color: var(--gold2); }
+@media (max-width: 900px) { .landing .team { grid-template-columns: 1fr; } .landing .portrait { height: 22vh; } .landing-title { font-size: 26px; } }

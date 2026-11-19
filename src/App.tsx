@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
-import { getTeamCode, setTeamCode, toggle, useProgress, type SyncStatus } from './model/progress';
+import { hasCode, isUnlocked, login, logout, toggle, useProgress, type SyncStatus } from './model/progress';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
@@ -15,57 +15,92 @@ const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
 
 export function App() {
   const { status, lastSync, pendingCount, isDone } = useProgress();
-  const [profileId, setProfileId] = remember<number>('fzth:v2:profile', 0);
+  const [active, setActive] = remember<number | null>('fzth:v2:active', null);
   const [view, setView] = remember<string>('fzth:v2:view', 'home');
   const [hideDone, setHideDone] = remember<boolean>('fzth:v2:hideDone', false);
-  const [showSettings, setShowSettings] = useState(false);
-  const profile = profiles.find(p => p.id === profileId) ?? profiles[0];
+  const [asking, setAsking] = useState<number | null>(null);
+  const profile = active !== null && isUnlocked(active) ? profiles.find(p => p.id === active) : undefined;
   const info = dofusInfo.find(d => d.id === view);
 
-  useEffect(() => { document.body.dataset.world = profile.world; }, [profile.world]);
+  useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
+
+  const open = (pid: number) => { if (isUnlocked(pid)) { setActive(pid); setView('home'); } else setAsking(pid); };
+
+  if (!profile) {
+    return (
+      <div className="app landing">
+        <h1 className="landing-title">From Zero to Hero</h1>
+        <p className="landing-sub">Choisis ton personnage</p>
+        <section className="team">
+          {profiles.map(p => (
+            <button key={p.id} className="portrait" data-world={p.world} onClick={() => open(p.id)}>
+              <img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt={`Illustration de ${p.name}`} />
+              <span className="portrait-info"><strong>{p.name}</strong><small>{p.classe}{isUnlocked(p.id) ? '' : ' · 🔒'}</small></span>
+            </button>
+          ))}
+        </section>
+        {asking !== null && <CodeDialog profileId={asking} onClose={() => setAsking(null)} onOk={() => { setActive(asking); setView('home'); setAsking(null); }} />}
+      </div>
+    );
+  }
 
   return (
     <div className="app">
       <header className="top">
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
-        <nav className="profiles">
-          {profiles.map(p => (
-            <button key={p.id} className={p.id === profile.id ? 'on' : ''} data-world={p.world} onClick={() => setProfileId(p.id)}>
-              <img className="avatar" src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" /> {p.name} <small>{p.classe}</small>
-            </button>
-          ))}
-        </nav>
-        <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} onClick={() => setShowSettings(true)} />
+        <div className="me">
+          <img className="avatar big" src={`${import.meta.env.BASE_URL}persos/${profile.image}`} alt="" />
+          <span><strong>{profile.name}</strong> <small>{profile.classe}</small></span>
+          <button onClick={() => setActive(null)} title="Revenir au choix du personnage">Changer</button>
+          <button onClick={() => { logout(profile.id); setActive(null); }} title="Oublier le code sur cet appareil">Se déconnecter</button>
+        </div>
+        <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
       </header>
 
       {info
         ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
-        : <Home profileId={profile.id} isDone={isDone} onOpen={setView} onPick={setProfileId} />}
+        : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
+    </div>
+  );
+}
 
-      {showSettings && <Settings onClose={() => setShowSettings(false)} status={status} />}
+function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: () => void; onOk: () => void }) {
+  const p = profiles.find(x => x.id === profileId)!;
+  const [exists, setExists] = useState<boolean | null | undefined>(undefined); // undefined = en cours de vérification
+  const [code, setCode] = useState(''); const [code2, setCode2] = useState('');
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { let alive = true; hasCode(profileId).then(v => { if (alive) setExists(v); }); return () => { alive = false; }; }, [profileId]);
+  const creating = exists === false || exists === null;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setError('');
+    if (creating && exists === false && code !== code2) { setError('Les deux codes ne sont pas identiques.'); return; }
+    setBusy(true); const r = await login(profileId, code); setBusy(false);
+    if (r.ok) onOk(); else setError(r.error);
+  };
+  return (
+    <div className="modal" onClick={onClose}>
+      <form className="panel code-box" data-world={p.world} onClick={e => e.stopPropagation()} onSubmit={submit}>
+        <img className="avatar huge" src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" />
+        <h2>{p.name}</h2>
+        {exists === undefined ? <p>Vérification…</p> : exists === false ? (
+          <p>Première connexion : choisis le code secret de {p.name} (au moins 4 caractères). Il te sera demandé pour voir ses quêtes.</p>
+        ) : exists ? <p>Entre le code de {p.name}.</p> : <p>Serveur injoignable : entre le code de {p.name} (ou choisis-le si c’est la première fois sur cet appareil).</p>}
+        <input autoFocus type="password" inputMode="text" autoComplete="current-password" value={code} onChange={e => setCode(e.target.value)} placeholder="Code" />
+        {exists === false && <input type="password" value={code2} onChange={e => setCode2(e.target.value)} placeholder="Confirme le code" />}
+        {error && <p className="warn">{error}</p>}
+        <div className="row"><button type="button" onClick={onClose}>Annuler</button><button type="submit" className="primary" disabled={busy || exists === undefined}>{exists === false ? 'Créer mon code' : 'Entrer'}</button></div>
+      </form>
     </div>
   );
 }
 
 const img = (file: string | null) => (file ? `${import.meta.env.BASE_URL}dofus/${file}` : undefined);
 
-function Home({ profileId, isDone, onOpen, onPick }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void; onPick: (id: number) => void }) {
-  const stats = (pid: number) => {
-    let done = 0;
-    for (const raw of catalog) { const v = viewFor(raw, pid, isDone); if (v.itemIds.length && v.itemIds.every(id => isDone(pid, id))) done++; }
-    return done;
-  };
+function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
+  const finished = catalog.filter(raw => { const v = viewFor(raw, profileId, isDone); return v.itemIds.length && v.itemIds.every(id => isDone(profileId, id)); }).length;
   return (
     <main className="home panel">
-      <section className="team">
-        {profiles.map(p => (
-          <button key={p.id} className={`portrait${p.id === profileId ? ' on' : ''}`} data-world={p.world} onClick={() => onPick(p.id)}>
-            <img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt={`Illustration de ${p.name}`} />
-            <span className="portrait-info"><strong>{p.name}</strong><small>{p.classe} · {stats(p.id)}/{catalog.length} Dofus</small></span>
-          </button>
-        ))}
-      </section>
-      <h2>Tous les Dofus</h2>
+      <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
       <div className="grid">
         {dofusInfo.map(d => {
           const raw = catalog.find(x => x.id === d.id);
@@ -232,28 +267,13 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
   );
 }
 
-function SyncBadge({ status, lastSync, pending, onClick }: { status: SyncStatus; lastSync: Date | null; pending: number; onClick: () => void }) {
+function SyncBadge({ status, lastSync, pending }: { status: SyncStatus; lastSync: Date | null; pending: number }) {
   const txt: Record<SyncStatus, string> = {
-    local: 'Local seulement — entrer le code d’équipe', syncing: 'Synchronisation…',
-    ok: `Synchronisé${lastSync ? ' ' + lastSync.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}`,
-    offline: `Hors ligne${pending ? ` — ${pending} en attente` : ''}`, badcode: 'Code d’équipe invalide',
+    local: 'Sur cet appareil seulement', syncing: 'Synchronisation…',
+    ok: `Sauvegardé${lastSync ? ' ' + lastSync.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}`,
+    offline: `Hors ligne${pending ? ` — ${pending} en attente` : ''}`, badcode: 'Code refusé — reconnecte-toi',
   };
-  return <button className={`sync ${status}`} onClick={onClick} title="Réglages de synchronisation">● {txt[status]}</button>;
-}
-
-function Settings({ onClose, status }: { onClose: () => void; status: SyncStatus }) {
-  const [code, setCode] = useState(getTeamCode());
-  return (
-    <div className="modal" onClick={onClose}>
-      <form className="panel" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); setTeamCode(code); onClose(); }}>
-        <h2>Code d’équipe</h2>
-        <p>Le même code pour Furionette, Volrod et Zepharyen. Sans code, les coches restent seulement sur cet appareil.</p>
-        <input autoFocus value={code} onChange={e => setCode(e.target.value)} placeholder="Code d’équipe" />
-        {status === 'badcode' && <p className="warn">Le code actuel est refusé par le serveur.</p>}
-        <div className="row"><button type="button" onClick={onClose}>Annuler</button><button type="submit" className="primary">Enregistrer</button></div>
-      </form>
-    </div>
-  );
+  return <span className={`sync ${status}`}>● {txt[status]}</span>;
 }
 
 export function QuestRow({ item, done, grouped, onToggle }: { item: ItemView; done: boolean; grouped?: boolean; onToggle: () => void }) {
