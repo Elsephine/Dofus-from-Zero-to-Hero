@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package } from 'lucide-react';
 import { install, useInstall } from './model/install';
 import { ReportButton, ReportDialog } from './Report';
 import { EggRing, eggColor } from './ui/EggRing';
@@ -133,8 +133,8 @@ export function App() {
       {view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
           <div className="with-rail">
-            <DofusRail current={info.id} profileId={profile.id} isDone={isDone} onOpen={setView} />
             <DofusPage key={info.id} info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
+            <DofusRail current={info.id} profileId={profile.id} isDone={isDone} onOpen={setView} />
           </div>
         )
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
@@ -413,20 +413,33 @@ function DofusRail({ current, profileId, isDone, onOpen }: { current: string; pr
   useEffect(() => { document.querySelector('.rail .on')?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [current]);
   return (
     <nav className="rail panel" aria-label="Tous les Dofus">
+      <h3 className="rail-title">Les Dofus</h3>
       {dofusInfo.map(d => {
         const raw = catalog.find(x => x.id === d.id);
         const v = raw && viewFor(raw, profileId, isDone);
         const pct = v && v.itemIds.length ? Math.round(v.itemIds.filter(id => isDone(profileId, id)).length / v.itemIds.length * 100) : 0;
         return (
-          <button key={d.id} className={`rail-item${d.id === current ? ' on' : ''}${pct === 100 ? ' complete' : ''}`} onClick={() => onOpen(d.id)} title={`${d.name} · ${pct} %`}>
-            {d.image && <img src={img(d.image)} alt="" loading="lazy" />}
-            <span className="rail-text"><span className="rail-name">{d.name}</span><span className="bar"><span style={{ width: `${pct}%` }} /></span></span>
+          <button key={d.id} className={`rail-item${d.id === current ? ' on' : ''}${pct === 100 ? ' complete' : ''}${pct === 0 ? ' todo' : ''}`} onClick={() => onOpen(d.id)} title={`${d.name} · ${pct} %`}
+            style={{ '--egg': eggColor(d.image) } as React.CSSProperties}>
+            {d.image && <img src={img(d.image)} alt={d.name} loading="lazy" />}
+            {pct === 100 && <span className="rail-check"><Check size={11} strokeWidth={3} /></span>}
+            {pct > 0 && pct < 100 && <span className="rail-pct" style={{ '--p': pct } as React.CSSProperties} />}
           </button>
         );
       })}
     </nav>
   );
 }
+
+/** Statistiques d'objectifs (faits / total) par type, comme sur Tougli. */
+const STAT_TYPES: { key: string; label: string; icon: typeof Swords; match: (i: ItemView) => boolean }[] = [
+  { key: 'solo', label: 'Combats solo', icon: Swords, match: i => !!i.objectives?.some(o => o.type.startsWith('combat') && o.type.endsWith('solo')) },
+  { key: 'groupe', label: 'Combats de groupe', icon: Users, match: i => !!i.objectives?.some(o => o.type.startsWith('combat') && o.type.endsWith('groupe')) },
+  { key: 'donjon', label: 'Donjons', icon: Castle, match: i => !!i.dungeon?.name || !!i.objectives?.some(o => o.type === 'donjon') },
+  { key: 'bashing', label: 'Bashing de monstres', icon: Skull, match: i => !!i.objectives?.some(o => o.type === 'bashing-mob') },
+  { key: 'special', label: 'Horaires, songes, sorts…', icon: Clock4, match: i => !!i.objectives?.some(o => iconInfo(o.type).family === 'special') },
+  { key: 'aide', label: 'Aide d’autres joueurs / classes', icon: Handshake, match: i => !!i.objectives?.some(o => iconInfo(o.type).family === 'aide') },
+];
 
 function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack }: {
   info: DofusInfo; raw?: DofusView; profileId: number; hideDone: boolean; setHideDone: (v: boolean) => void;
@@ -437,51 +450,100 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
   const picks = raw ? picksFor(raw, profileId, isDone) : {};
   const done = dofus ? dofus.itemIds.filter(id => isDone(profileId, id)).length : 0;
   const total = dofus?.itemIds.length ?? 0;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const [confirm, setConfirm] = useState<'' | 'all' | 'reset'>('');
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const items = dofus ? dofus.sections.flatMap(s => s.items) : [];
+  const uniq = [...new Map(items.map(i => [i.id, i])).values()];
+  const stats = STAT_TYPES.map(t => { const l = uniq.filter(t.match); return { ...t, total: l.length, done: l.filter(i => isDone(profileId, i.id)).length }; }).filter(t => t.total);
+  const next = items.find(i => !isDone(profileId, i.id));
+  const bulk = (v: boolean) => { if (!dofus) return; for (const id of dofus.itemIds) toggle(profileId, id, v, { silent: true }); setConfirm(''); };
+  const ask = (k: 'all' | 'reset') => { if (confirm === k) bulk(k === 'all'); else { setConfirm(k); setTimeout(() => setConfirm(c => (c === k ? '' : c)), 4000); } };
+  const goTo = (id: string) => { setClosed(c => ({ ...c, [id]: false })); setTimeout(() => document.getElementById('sec-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30); };
   return (
-    <main className="dofus-page">
-      <section className="reward panel" style={{ '--egg': eggColor(info.image) } as React.CSSProperties}>
-        <button className="back" onClick={onBack}>← Tous les Dofus</button>
-        {info.image && <span className="reward-egg"><EggRing src={img(info.image)!} image={info.image} pct={total ? (done / total) * 100 : 0} size={124} stroke={6} /></span>}
-        <div className="reward-text">
-          <h2>{info.name} {dofus?.url && <a href={dofus.url} target="_blank" rel="noreferrer" className="dpln">DPLN ↗</a>}</h2>
-          <p className="meta">
-            {info.level && <>Niveau recommandé {info.level}</>}
-            {dofus && <> · {done}/{total} objectifs</>}
-            {dofus?.kamas && <> · {dofus.kamas.total.toLocaleString('fr-FR')} K gagnés{dofus.kamas.complete ? '' : ' (partiel)'}</>}
-          </p>
-          <div className="stats">{info.stats.map(s => <span key={s} className="chip stat">{s}</span>)}</div>
-          {info.effect && <p className="effect">{info.effect}</p>}
-          {dofus && <span className="bar big egg-bar"><span style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></span>}
-        </div>
-        {raw && !!raw.choices.length && (
-          <div className="choices">
-            <h3>Choix avant de commencer</h3>
-            {raw.choices.map(c => (
-              <label key={c.selector}>{c.label}
-                <select value={picks[c.selector]} onChange={e => setPick(raw, profileId, c.selector, e.target.value)}>
-                  {c.options.map(o => <option key={o}>{o}</option>)}
-                </select>
-              </label>
-            ))}
+    <main className="dofus-page v2" style={{ '--egg': eggColor(info.image) } as React.CSSProperties}>
+      {dofus && (
+        <aside className="path-scroll" aria-label="Étapes du Dofus">
+          <span className="roll top" /><span className="roll bottom" />
+          <div className="path">
+            {dofus.sections.map(sec => {
+              const d = sec.items.filter(i => isDone(profileId, i.id)).length;
+              const st = d === sec.items.length ? 'done' : sec.items.some(i => i.id === next?.id) ? 'current' : d ? 'started' : 'todo';
+              return <button key={sec.id} className={`path-node ${st}`} onClick={() => goTo(sec.id)} title={`${d}/${sec.items.length}`}><span>{sec.title}</span></button>;
+            })}
+            <span className={`path-egg${pct === 100 ? ' done' : ''}`}>{info.image && <img src={img(info.image)} alt="" />}</span>
           </div>
-        )}
-        {dofus && <Needs dofus={dofus} profileId={profileId} isDone={isDone} />}
-      </section>
-
-      {!dofus ? (
-        <section className="panel empty">Les quêtes de ce Dofus ne sont pas encore dans la base. Elles arriveront au fur et à mesure.</section>
-      ) : (
-        <>
-          <nav className="tabs">
-            <button className={tab === 'quetes' ? 'on' : ''} onClick={() => setTab('quetes')}>Quêtes & succès</button>
-            <button className={tab === 'ressources' ? 'on' : ''} onClick={() => setTab('ressources')}>Ressources nécessaires</button>
-          </nav>
-          <div className={`split show-${tab}`}>
-            <QuestList dofus={dofus} profileId={profileId} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} />
-            <Resources key={`${profileId}:${dofus.id}`} dofus={dofus} profileId={profileId} isDone={isDone} />
-          </div>
-        </>
+        </aside>
       )}
+      <section className="dp-center panel">
+        <header className="dp-head">
+          <button className="back" onClick={onBack}>← Tous les Dofus</button>
+          {info.image && <img className="dp-egg" src={img(info.image)} alt="" />}
+          <div className="dp-title">
+            <h2>{info.name}</h2>
+            <div className="dp-badges">
+              {info.level && <span className="badge-pill lvl"><TrendingUp size={13} /> Niveau {info.level}</span>}
+              {dofus?.kamas && <span className="badge-pill kamas"><Coins size={13} /> {dofus.kamas.total.toLocaleString('fr-FR')} K{dofus.kamas.complete ? '' : '+'}</span>}
+              {info.stats.map(st => <span key={st} className="badge-pill stat">{st}</span>)}
+              {dofus?.url && <a href={dofus.url} target="_blank" rel="noreferrer" className="badge-pill link">DPLN ↗</a>}
+            </div>
+            {info.effect && <p className="effect">{info.effect}</p>}
+          </div>
+        </header>
+        {dofus ? <>
+          <div className="dp-stats">
+            <div className="dp-ring" style={{ '--p': pct } as React.CSSProperties}>
+              <strong>{pct}%</strong><span>Complété</span><b>{done}/{total}</b><small>Objectifs</small>
+            </div>
+            <div className="dp-tiles">{stats.map(t => (
+              <div key={t.key} className={`dp-tile${t.done === t.total ? ' full' : ''}`} title={t.label}>
+                <t.icon size={20} /><span><strong>{t.done}</strong><small>{t.total}</small></span>
+              </div>
+            ))}</div>
+          </div>
+          <div className="dp-actions">
+            <button className="ok-btn" onClick={() => ask('all')}><Check size={15} /> {confirm === 'all' ? 'Confirmer ?' : 'Tout valider'}</button>
+            <button className="danger-btn" onClick={() => ask('reset')}><RotateCcw size={15} /> {confirm === 'reset' ? 'Confirmer ?' : 'Réinitialiser'}</button>
+            <span className="grow" />
+            <label className="toggle"><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Masquer les complétés</label>
+          </div>
+          {raw && !!raw.choices.length && (
+            <div className="choices">
+              <h3>Choix avant de commencer</h3>
+              {raw.choices.map(c => (
+                <label key={c.selector}>{c.label}
+                  <select value={picks[c.selector]} onChange={e => setPick(raw, profileId, c.selector, e.target.value)}>
+                    {c.options.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+          )}
+          <nav className="tabs mobile-only">
+            <button className={tab === 'quetes' ? 'on' : ''} onClick={() => setTab('quetes')}>Quêtes & succès</button>
+            <button className={tab === 'ressources' ? 'on' : ''} onClick={() => setTab('ressources')}>Ressources</button>
+          </nav>
+          <div className={`dp-sections${tab === 'ressources' ? ' hide-mobile' : ''}`}>
+            {dofus.sections.map(sec => {
+              const list = hideDone ? sec.items.filter(i => !isDone(profileId, i.id)) : sec.items;
+              const d = sec.items.filter(i => isDone(profileId, i.id)).length;
+              const isClosed = closed[sec.id] ?? false;
+              return (
+                <div key={sec.id} id={'sec-' + sec.id} className="dp-section">
+                  <button className="orn-title" onClick={() => setClosed(c => ({ ...c, [sec.id]: !isClosed }))}>
+                    <span className="orn-line" /><span className="orn-text">{sec.title} <small>{d}/{sec.items.length}</small> {isClosed ? '▸' : '▾'}</span><span className="orn-line" />
+                  </button>
+                  {!isClosed && (list.length ? (
+                    <ul className="dp-quests">{list.map((i, n) => <QuestRow key={i.id} item={i} done={isDone(profileId, i.id)} grouped={!!i.group && list[n - 1]?.group === i.group} next={next?.id === i.id}
+                      onToggle={() => toggle(profileId, i.id)} />)}</ul>
+                  ) : <p className="meta center">✓ Tout est fait dans cette partie.</p>)}
+                </div>
+              );
+            })}
+          </div>
+        </> : <p className="panel empty">Les quêtes de ce Dofus ne sont pas encore dans la base. Elles arriveront au fur et à mesure.</p>}
+      </section>
+      {dofus && <div className={`dp-res${tab === 'quetes' ? ' hide-mobile' : ''}`}><Resources key={`${profileId}:${dofus.id}`} dofus={dofus} profileId={profileId} isDone={isDone} /></div>}
     </main>
   );
 }
@@ -544,41 +606,61 @@ function Needs({ dofus, profileId, isDone }: { dofus: DofusView; profileId: numb
 function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: number; isDone: (p: number, id: string) => boolean }) {
   const [mult, setMult] = remember<number>(`fzth:v2:mult:${profileId}:${dofus.id}`, 1);
   const [showOwned, setShowOwned] = remember<boolean>('fzth:v2:showOwned', false);
+  const [rtab, setRtab] = remember<'objets' | 'donjons'>('fzth:v2:resTab', 'objets');
   const { kamas, items } = resourceNeeds(dofus, id => isDone(profileId, id));
   const key = (name: string) => `res:${dofus.id}:${name}`;
   const owned = items.filter(r => isDone(profileId, key(r.name))).length;
   const shown = showOwned ? items : items.filter(r => !isDone(profileId, key(r.name)));
   const m = Math.max(1, mult || 1);
+  // Donjons demandés par les quêtes de ce Dofus (une ligne par donjon, fait quand toutes ses quêtes le sont).
+  const djs = new Map<string, { name: string; quests: ItemView[] }>();
+  for (const i of [...new Map(dofus.sections.flatMap(x => x.items).map(i => [i.id, i])).values()]) {
+    const names = [i.dungeon?.name, ...(i.objectives ?? []).filter(o => o.type === 'donjon' && o.label).map(o => o.label!)].filter(Boolean) as string[];
+    for (const n of new Set(names)) { const e = djs.get(n) ?? { name: n, quests: [] }; e.quests.push(i); djs.set(n, e); }
+  }
+  const djList = [...djs.values()].map(d => ({ ...d, done: d.quests.every(q => isDone(profileId, q.id)) })).filter(d => showOwned || !d.done);
   return (
     <aside className="resources panel">
-      <div className="detail-head">
-        <div>
-          <h3>Ressources nécessaires</h3>
-          <p className="meta">{owned}/{items.length} réunies · quêtes restantes seulement</p>
-        </div>
-        <label className="mult">×<input type="number" min={1} max={99} value={mult} onChange={e => setMult(Math.min(99, Math.max(1, Number(e.target.value) || 1)))} /></label>
+      <nav className="res-tabs">
+        <button className={rtab === 'objets' ? 'on' : ''} onClick={() => setRtab('objets')}><Package size={16} /> Objets <small>{items.length - owned}</small></button>
+        <button className={rtab === 'donjons' ? 'on' : ''} onClick={() => setRtab('donjons')}><Castle size={16} /> Donjons <small>{[...djs.values()].filter(d => !d.quests.every(q => isDone(profileId, q.id))).length}</small></button>
+      </nav>
+      <div className="res-head">
+        <h3>{rtab === 'objets' ? 'Ressources' : 'Donjons'}</h3>
+        {rtab === 'objets' && <label className="mult" title="Nombre de personnages">×<input type="number" min={1} max={99} value={mult} onChange={e => setMult(Math.min(99, Math.max(1, Number(e.target.value) || 1)))} /> pers.</label>}
       </div>
-      {kamas && <p className="kamas-need">Kamas à prévoir : <strong>{(kamas.qty * m).toLocaleString('fr-FR')} K</strong></p>}
-      {owned > 0 && <label className="toggle"><input type="checkbox" checked={showOwned} onChange={e => setShowOwned(e.target.checked)} /> Voir les ressources déjà obtenues ({owned})</label>}
-      <ul className="res-list">
-        {shown.map(r => {
-          const have = isDone(profileId, key(r.name));
-          return (
-            <li key={r.name} className={have ? 'done' : ''}>
-              <label title={r.quests.join(' · ')}>
-                <input type="checkbox" checked={have} onChange={() => toggle(profileId, key(r.name))} />
-                <span className="qty">{(r.qty * m).toLocaleString('fr-FR')}</span>
-                <ResIcon name={r.name} size={20} />
-                <span className="rname">{r.name}</span>
+      <label className="toggle small"><input type="checkbox" checked={!showOwned} onChange={e => setShowOwned(!e.target.checked)} /> Masquer les complétés</label>
+      {rtab === 'objets' ? (
+        <ul className="res-cards">
+          {kamas && <li className="res-card kamas"><span className="rc-ic"><Coins size={22} /></span><span className="rc-name"><strong>Kamas</strong><small>×{kamas.qty.toLocaleString('fr-FR')} / pers</small></span><span className="rc-qty">{(kamas.qty * m).toLocaleString('fr-FR')}</span></li>}
+          {shown.map(r => {
+            const have = isDone(profileId, key(r.name));
+            return (
+              <li key={r.name} className={`res-card${have ? ' done' : ''}`} title={r.quests.join(' · ')}>
+                <span className="rc-ic"><ResIcon name={r.name} size={30} /></span>
+                <span className="rc-name"><strong>{r.name}</strong><small>×{r.qty.toLocaleString('fr-FR')} / pers</small></span>
                 <Mates id={key(r.name)} profileId={profileId} isDone={isDone} />
                 {have && <OfferButton name={r.name} profileId={profileId} />}
-              </label>
+                <span className="rc-qty">{(r.qty * m).toLocaleString('fr-FR')}</span>
+                <input type="checkbox" checked={have} onChange={e => { if (!have) burst(e.currentTarget); toggle(profileId, key(r.name)); }} title="Je l’ai" />
+              </li>
+            );
+          })}
+          {!items.length && <li className="meta">Aucune ressource pour les quêtes restantes.</li>}
+          {items.length > 0 && !shown.length && <li className="meta">🎉 Tout est réuni !</li>}
+        </ul>
+      ) : (
+        <ul className="res-cards">
+          {djList.map(d => (
+            <li key={d.name} className={`res-card${d.done ? ' done' : ''}`} title={d.quests.map(q => q.name).join(' · ')}>
+              <span className="rc-ic"><Castle size={22} /></span>
+              <span className="rc-name"><strong>{d.name}</strong><small>{d.quests.length} quête{d.quests.length > 1 ? 's' : ''} : {d.quests[0].name}{d.quests.length > 1 ? '…' : ''}</small></span>
+              {d.done && <Check size={18} className="ok-ic" />}
             </li>
-          );
-        })}
-        {!items.length && <li className="meta">Aucune ressource pour les quêtes restantes.</li>}
-        {items.length > 0 && !shown.length && <li className="meta">🎉 Tout est réuni !</li>}
-      </ul>
+          ))}
+          {!djList.length && <li className="meta">{djs.size ? '🎉 Tous les donjons sont faits !' : 'Aucun donjon demandé.'}</li>}
+        </ul>
+      )}
     </aside>
   );
 }
