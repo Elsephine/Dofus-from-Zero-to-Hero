@@ -358,3 +358,133 @@ revoke all on function public.fzth_ping(integer, text, text), public.fzth_avail_
   public.fzth_claim_list(integer, text), public.fzth_claim_set(integer, text, text, boolean) from public;
 grant execute on function public.fzth_ping(integer, text, text), public.fzth_avail_list(integer, text), public.fzth_avail_set(integer, text, jsonb, text),
   public.fzth_claim_list(integer, text), public.fzth_claim_set(integer, text, text, boolean) to anon;
+-- ---------- Code oublié : réinitialisation validée par un coéquipier ----------
+-- 1) Sur son appareil, le joueur demande une réinitialisation (fzth_reset_ask) avec un jeton aléatoire gardé dans son navigateur.
+-- 2) Un coéquipier connecté (avec SON code) l'accepte (fzth_reset_approve) : l'ancien code est effacé, la progression est conservée.
+-- 3) Seul l'appareil qui détient le jeton peut alors choisir le nouveau code (fzth_reset_finish). Valable 48 h.
+create table if not exists public.fzth_reset (
+  profile_id integer primary key check (profile_id between 0 and 2),
+  token_hash text not null,
+  requested_at timestamptz not null default now(),
+  approved_by integer check (approved_by between 0 and 2),
+  approved_at timestamptz
+);
+alter table public.fzth_reset enable row level security;
+revoke all on public.fzth_reset from anon, authenticated;
+
+create or replace function public.fzth_reset_ask(p_profile integer, p_token text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_profile not between 0 and 2 then raise exception 'personnage inconnu'; end if;
+  if length(coalesce(p_token, '')) < 20 then raise exception 'jeton invalide'; end if;
+  if not exists (select 1 from fzth_profile_code where profile_id = p_profile) then raise exception 'pas de code à réinitialiser'; end if;
+  -- une demande déjà acceptée et encore valable n'est pas écrasée
+  if exists (select 1 from fzth_reset where profile_id = p_profile and approved_at is not null and approved_at > now() - interval '48 hours') then
+    raise exception 'réinitialisation déjà acceptée';
+  end if;
+  insert into fzth_reset (profile_id, token_hash) values (p_profile, fzth_hash(p_profile, p_token))
+  on conflict (profile_id) do update set token_hash = excluded.token_hash, requested_at = now(), approved_by = null, approved_at = null;
+end $$;
+
+create or replace function public.fzth_reset_list(p_profile integer, p_code text)
+returns table (profile_id integer, requested_at timestamptz, approved_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select r.profile_id, r.requested_at, r.approved_at from fzth_reset r
+    where r.profile_id <> p_profile and r.requested_at > now() - interval '48 hours';
+end $$;
+
+create or replace function public.fzth_reset_approve(p_profile integer, p_code text, p_target integer) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  if p_target = p_profile then raise exception 'impossible pour soi-même'; end if;
+  update fzth_reset set approved_by = p_profile, approved_at = now()
+    where profile_id = p_target and approved_at is null and requested_at > now() - interval '48 hours';
+  if not found then raise exception 'aucune demande en attente'; end if;
+  delete from fzth_profile_code where profile_id = p_target;
+end $$;
+
+create or replace function public.fzth_reset_status(p_profile integer, p_token text) returns text
+language plpgsql security definer set search_path = public as $$
+declare r fzth_reset;
+begin
+  select * into r from fzth_reset where profile_id = p_profile;
+  if r is null or r.token_hash <> fzth_hash(p_profile, coalesce(p_token, '')) or r.requested_at < now() - interval '48 hours' then return 'none'; end if;
+  return case when r.approved_at is null then 'pending' else 'approved' end;
+end $$;
+
+create or replace function public.fzth_reset_finish(p_profile integer, p_token text, p_new_code text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if length(coalesce(p_new_code, '')) < 4 then raise exception 'code trop court'; end if;
+  if not exists (select 1 from fzth_reset where profile_id = p_profile and approved_at is not null
+      and approved_at > now() - interval '48 hours' and token_hash = fzth_hash(p_profile, coalesce(p_token, ''))) then
+    raise exception 'réinitialisation non autorisée';
+  end if;
+  insert into fzth_profile_code (profile_id, code_hash) values (p_profile, fzth_hash(p_profile, p_new_code))
+  on conflict (profile_id) do update set code_hash = excluded.code_hash;
+  delete from fzth_reset where profile_id = p_profile;
+end $$;
+
+-- Pendant une réinitialisation acceptée, personne d'autre ne peut créer le code à sa place.
+create or replace function public.fzth_login(p_profile integer, p_code text) returns text
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_profile not between 0 and 2 then raise exception 'personnage inconnu'; end if;
+  if not exists (select 1 from fzth_profile_code where profile_id = p_profile) then
+    if exists (select 1 from fzth_reset where profile_id = p_profile and approved_at is not null and approved_at > now() - interval '48 hours') then
+      raise exception 'réinitialisation en cours';
+    end if;
+    if length(coalesce(p_code, '')) < 4 then raise exception 'code trop court'; end if;
+    insert into fzth_profile_code (profile_id, code_hash) values (p_profile, fzth_hash(p_profile, p_code))
+    on conflict (profile_id) do nothing;
+    if found then return 'created'; end if;
+  end if;
+  perform fzth_check(p_profile, p_code);
+  return 'ok';
+end $$;
+
+revoke all on function public.fzth_reset_ask(integer, text), public.fzth_reset_list(integer, text), public.fzth_reset_approve(integer, text, integer),
+  public.fzth_reset_status(integer, text), public.fzth_reset_finish(integer, text, text) from public;
+grant execute on function public.fzth_reset_ask(integer, text), public.fzth_reset_list(integer, text), public.fzth_reset_approve(integer, text, integer),
+  public.fzth_reset_status(integer, text), public.fzth_reset_finish(integer, text, text), public.fzth_login(integer, text) to anon;
+
+-- ---------- Signalements d'erreurs (quêtes, ressources…) ----------
+create table if not exists public.fzth_report (
+  id uuid primary key default gen_random_uuid(),
+  profile_id integer not null check (profile_id between 0 and 2),
+  item_id text not null check (length(item_id) <= 200),
+  label text not null check (length(label) <= 200),
+  body text not null check (length(body) between 3 and 1000),
+  created_at timestamptz not null default now(),
+  resolved boolean not null default false
+);
+alter table public.fzth_report enable row level security;
+revoke all on public.fzth_report from anon, authenticated;
+
+create or replace function public.fzth_report_add(p_profile integer, p_code text, p_item text, p_label text, p_body text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare v uuid;
+begin
+  perform fzth_check(p_profile, p_code);
+  insert into fzth_report (profile_id, item_id, label, body) values (p_profile, left(p_item, 200), left(p_label, 200), left(p_body, 1000)) returning id into v;
+  return v;
+end $$;
+create or replace function public.fzth_report_list(p_profile integer, p_code text)
+returns table (id uuid, profile_id integer, item_id text, label text, body text, created_at timestamptz, resolved boolean)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select r.id, r.profile_id, r.item_id, r.label, r.body, r.created_at, r.resolved from fzth_report r order by r.created_at desc limit 200;
+end $$;
+create or replace function public.fzth_report_resolve(p_profile integer, p_code text, p_id uuid, p_resolved boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  update fzth_report set resolved = p_resolved where id = p_id;
+end $$;
+revoke all on function public.fzth_report_add(integer, text, text, text, text), public.fzth_report_list(integer, text), public.fzth_report_resolve(integer, text, uuid, boolean) from public;
+grant execute on function public.fzth_report_add(integer, text, text, text, text), public.fzth_report_list(integer, text), public.fzth_report_resolve(integer, text, uuid, boolean) to anon;
+revoke all on function public.fzth_hash(integer, text) from public, anon, authenticated;

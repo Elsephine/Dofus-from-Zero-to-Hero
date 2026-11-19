@@ -942,3 +942,26 @@ body[data-theme="dark"] { background-image: radial-gradient(ellipse at top, var(
 .share-opt { text-align: left; align-items: flex-start; }
 .install-help { display: block; padding: 4px 6px; }
 .page-loading { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+
+/* Signalements, code oublié, sauvegarde */
+.report-btn { opacity: 0; padding: 1px 5px; margin-left: 6px; border: none; background: none; color: var(--muted); vertical-align: middle; }
+.quest:hover .report-btn, .report-btn:focus { opacity: 1; }
+.report-btn:hover { color: var(--world-accent); }
+@media (hover: none) { .report-btn { opacity: .5; } }
+.report-box { width: min(440px, 92vw); display: flex; flex-direction: column; gap: 8px; }
+.report-box h2 { display: flex; align-items: center; gap: 8px; font-size: 20px; }
+.report-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.report-kinds button { font-size: 12px; padding: 4px 8px; }
+.report-kinds button.on { background: var(--world-accent); color: var(--on-accent); border-color: var(--world-accent); }
+.report-box textarea { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); resize: vertical; }
+.reports ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.reports li label { display: flex; gap: 8px; align-items: flex-start; }
+.reports li.done { opacity: .5; }
+.forgot { align-self: center; }
+.forgot-box { display: flex; flex-direction: column; gap: 6px; align-items: stretch; padding: 8px; border-radius: 10px; background: var(--world-glow); text-align: left; font-size: 13px; }
+.forgot-box > svg { color: var(--world-accent); }
+.forgot-box p { margin: 0; }
+.reset-banner .reset-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
+.file-btn { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); font-size: inherit; }
+.file-btn input { display: none; }
+.dd-menu button svg, .file-btn svg { vertical-align: -3px; margin-right: 2px; }

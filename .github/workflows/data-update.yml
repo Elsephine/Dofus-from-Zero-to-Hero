@@ -1,0 +1,54 @@
+# Mise à jour automatique des données du jeu (succès, donjons, clés) depuis les données publiques
+# dofusdude/dofus3-main. Chaque lundi : si une nouvelle version de DOFUS est sortie, on régénère les fichiers,
+# on vérifie que le site se construit, on enregistre sur site-react puis on relance la publication.
+name: Mettre à jour les données du jeu
+on:
+  schedule: [{ cron: '17 5 * * 1' }]
+  workflow_dispatch:
+permissions: { contents: write, actions: write }
+concurrency: { group: data-update, cancel-in-progress: false }
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: site-react }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - name: Version du jeu
+        id: v
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          latest=$(gh api repos/dofusdude/dofus3-main/releases/latest -q .tag_name)
+          current=$(grep -oP 'GAME_VERSION = "\K[^"]+' src/data/jeu/donjons.ts)
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"; echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "Version en ligne : $latest · version du site : $current"
+      - name: Télécharger les données
+        if: steps.v.outputs.latest != steps.v.outputs.current
+        run: |
+          mkdir -p /tmp/d3
+          for f in achievements achievement_categories achievement_objectives challenges dungeons fr items recipes; do
+            curl -sSfL -o /tmp/d3/$f.json "https://github.com/dofusdude/dofus3-main/releases/download/${{ steps.v.outputs.latest }}/$f.json"
+          done
+      - name: Régénérer les fichiers
+        if: steps.v.outputs.latest != steps.v.outputs.current
+        run: |
+          python3 -I scripts/jeu/gen_donjons.py /tmp/d3 "${{ steps.v.outputs.latest }}" src/data/jeu/donjons.ts
+          python3 -I scripts/jeu/gen_succes.py /tmp/d3 /tmp/d3 "${{ steps.v.outputs.latest }}" src/data/jeu
+      - name: Vérifier que le site se construit
+        if: steps.v.outputs.latest != steps.v.outputs.current
+        run: npm ci && npm run build
+      - name: Enregistrer et publier
+        if: steps.v.outputs.latest != steps.v.outputs.current
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add src/data/jeu
+          git diff --cached --quiet && { echo "Aucun changement"; exit 0; }
+          git commit -q -m "Données du jeu mises à jour : DOFUS ${{ steps.v.outputs.latest }}"
+          git push origin site-react
+          # Un envoi fait par ce robot ne relance pas les autres workflows : on relance la publication à la main.
+          gh workflow run deploy.yml --ref site-react

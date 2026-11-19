@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save } from 'lucide-react';
 import { install, useInstall } from './model/install';
+import { ReportButton, ReportDialog } from './Report';
 import { EggRing, eggColor } from './ui/EggRing';
 import { burst, celebrateDofus, closeTrophy, useTrophy } from './model/celebrate';
 import { catalog, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
-import { getHistory, hasCode, isUnlocked, login, logout, setShare, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
+import { approveReset, askReset, exportProfile, finishReset, getHistory, hasCode, importProfile, isUnlocked, listResetRequests, login, logout, resetStatus, resetToken, setShare, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
 import { labelOf, search } from './model/search';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
@@ -124,6 +125,8 @@ export function App() {
       {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
       <Toasts />
       <TrophyModal />
+      <ReportDialog profileId={profile.id} />
+      <ResetRequests profileId={profile.id} />
 
       <Suspense fallback={<div className="panel page-loading"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div>}>
       <div key={view} className="page-fade">
@@ -168,6 +171,7 @@ function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: 
         {exists === false && <input type="password" value={code2} onChange={e => setCode2(e.target.value)} placeholder="Confirme le code" />}
         {exists === false && <label className="toggle small share-opt"><input type="checkbox" checked={share} onChange={e => setShareOpt(e.target.checked)} /> Partager ma progression avec l’équipe (conseillé : c’est ce qui permet de jouer ensemble)</label>}
         {error && <p className="warn">{error}</p>}
+        {exists && <ForgotCode profileId={profileId} onDone={onOk} />}
         <div className="row"><button type="button" onClick={onClose}>Annuler</button><button type="submit" className="primary" disabled={busy || exists === undefined}>{exists === false ? 'Créer mon code' : 'Entrer'}</button></div>
       </form>
     </div>
@@ -251,6 +255,83 @@ function ShareBanner({ profileId }: { profileId: number }) {
       <button onClick={() => setLater(today)}>Plus tard</button>
     </div>
   );
+}
+
+/** Code oublié : demande à un coéquipier, puis choix d'un nouveau code (la progression est conservée). */
+function ForgotCode({ profileId, onDone }: { profileId: number; onDone: () => void }) {
+  const [st, setSt] = useState<'closed' | 'none' | 'pending' | 'approved'>(resetToken(profileId) ? 'pending' : 'closed');
+  const [c1, setC1] = useState(''); const [c2, setC2] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (st !== 'pending') return;
+    let alive = true;
+    const check = () => resetStatus(profileId).then(v => { if (alive && v !== 'pending') setSt(v); }).catch(() => {});
+    void check(); const t = setInterval(check, 10_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [st, profileId]);
+  const mates = profiles.filter(p => p.id !== profileId).map(p => p.name).join(' ou ');
+  if (st === 'closed') return <button type="button" className="link-like forgot" onClick={() => setSt('none')}>Code oublié ?</button>;
+  const ask = async () => { setBusy(true); setErr(''); try { await askReset(profileId); setSt('pending'); } catch (e) { setErr((e as Error).message === 'réseau' ? 'Serveur injoignable.' : (e as Error).message); } setBusy(false); };
+  const finish = async () => {
+    setErr(''); if (c1.trim().length < 4) return setErr('Au moins 4 caractères.'); if (c1 !== c2) return setErr('Les deux codes ne sont pas identiques.');
+    setBusy(true); try { const r = await finishReset(profileId, c1); if (r.ok) onDone(); else setErr(r.error); } catch (e) { setErr((e as Error).message); } setBusy(false);
+  };
+  return (
+    <div className="forgot-box" onClick={e => e.stopPropagation()}>
+      <KeyRound size={16} />
+      {st === 'none' && <><p>Pas de panique : {mates} peut accepter une réinitialisation depuis sa page. Ta progression est conservée.</p><button type="button" className="primary" disabled={busy} onClick={() => void ask()}>Demander à un coéquipier</button></>}
+      {st === 'pending' && <p>Demande envoyée ✓ Dès que {mates} l’accepte, tu pourras choisir un nouveau code ici (reste sur cet appareil). Valable 48 h.</p>}
+      {st === 'approved' && <>
+        <p>C’est accepté ! Choisis ton nouveau code :</p>
+        <input type="password" value={c1} onChange={e => setC1(e.target.value)} placeholder="Nouveau code" />
+        <input type="password" value={c2} onChange={e => setC2(e.target.value)} placeholder="Confirme le nouveau code" />
+        <button type="button" className="primary" disabled={busy} onClick={() => void finish()}>Enregistrer et entrer</button>
+      </>}
+      {err && <p className="warn">{err}</p>}
+    </div>
+  );
+}
+
+/** Demandes de réinitialisation des coéquipiers, à accepter. */
+function ResetRequests({ profileId }: { profileId: number }) {
+  const [reqs, setReqs] = useState<{ profile_id: number; approved_at: string | null }[]>([]);
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    let alive = true;
+    const load = () => listResetRequests(profileId).then(r => { if (alive) setReqs(r); }).catch(() => {});
+    void load(); const t = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [profileId]);
+  const pend = reqs.filter(r => !r.approved_at);
+  if (!pend.length && !msg) return null;
+  return (
+    <div className="share-banner reset-banner">
+      <KeyRound size={18} />
+      {msg ? <span>{msg}</span> : pend.map(r => {
+        const p = profiles.find(x => x.id === r.profile_id)!;
+        return <span key={r.profile_id} className="reset-item"><strong>{p.name} a oublié son code</strong> et demande une réinitialisation (sa progression est conservée).
+          <button className="primary" onClick={async () => { try { await approveReset(profileId, p.id); setMsg(`✓ Accepté : ${p.name} peut maintenant choisir un nouveau code sur son appareil.`); setReqs(reqs.filter(x => x.profile_id !== p.id)); } catch (e) { setMsg('Impossible : ' + (e as Error).message); } }}>Accepter</button></span>;
+      })}
+      {msg && <button onClick={() => setMsg('')}>OK</button>}
+    </div>
+  );
+}
+
+/** Sauvegarde de la progression dans un fichier, et restauration. */
+function BackupItems({ profileId }: { profileId: number }) {
+  const [msg, setMsg] = useState('');
+  const save = () => {
+    const b = exportProfile(profileId); const p = profiles.find(x => x.id === profileId)!;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(b)], { type: 'application/json' }));
+    const a = document.createElement('a'); a.href = url; a.download = `zero-to-hero-${p.name.toLowerCase()}-${b.exportedAt.slice(0, 10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setMsg(`✓ ${b.entries.length} éléments sauvegardés`);
+  };
+  const restore = (f: File) => f.text().then(t => { const n = importProfile(profileId, JSON.parse(t)); setMsg(n ? `✓ ${n} éléments restaurés` : "✓ Déjà à jour : rien de plus récent dans ce fichier"); }).catch(e => setMsg('✗ ' + ((e as Error).message || 'fichier illisible')));
+  return <>
+    <button onClick={save}><Save size={15} /> Sauvegarder ma progression (fichier)</button>
+    <label className="file-btn"><Upload size={15} /> Restaurer une sauvegarde<input type="file" accept="application/json,.json" onChange={e => { const f = e.target.files?.[0]; if (f) void restore(f); e.target.value = ''; }} /></label>
+    {msg && <small className="meta">{msg}</small>}
+  </>;
 }
 
 /** Bouton clair / sombre (retenu sur l'appareil). */
@@ -538,6 +619,7 @@ function MeMenu({ profile, onOverlay, onChange, onLogout }: { profile: (typeof p
         <div className="dd-menu panel">
           <button className="primary" onClick={() => { onOverlay(); setOpen(false); }}>⧉ Ouvrir l’overlay à côté de Dofus</button>
           <InstallItem />
+          <BackupItems profileId={profile.id} />
           <button onClick={onChange}>⇄ Changer de personnage</button>
           <button onClick={onLogout}>⏻ Se déconnecter (oublier le code ici)</button>
           <small className="meta">Version du {new Date(__BUILD__).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
@@ -684,6 +766,7 @@ export function QuestRow({ item, done, grouped, next, onToggle }: { item: ItemVi
           {item.kind === 'achievement' && <span className="chip ach">Succès</span>}
           {item.url ? <a href={item.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{item.name}</a> : item.name}
           {item.toConfirm && <span className="chip warn" title="Lien ou donnée à confirmer">?</span>}
+          <ReportButton id={item.id} label={item.name} />
         </span>
         <span className="chips">
           {item.dungeon?.captureOcre && <span className="chip ocre" title="Donjon à capturer pour le Dofus Ocre">Ocre</span>}

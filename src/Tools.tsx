@@ -1,4 +1,5 @@
 // Page « Outils » : reprise de la boîte à outils de l'ancien site.
+import { ReportList } from './Report';
 import { useState } from 'react';
 import { profiles } from './model/profiles';
 import { useStuffs } from './model/stuffs';
@@ -25,6 +26,7 @@ export function Tools({ profileId }: { profileId: number }) {
       <h2>Outils d’aventuriers</h2>
       <p className="meta">Des outils simples, partagés entre les trois personnages.</p>
       <div className="toolgrid">
+        <ReportList profileId={profileId} />
         <section className="toolbox">
           <h3>🧭 Chasse aux trésors</h3>
           <p className="meta">Résolution des indices : position de départ, direction et indice, sur Dofus pour les Noobs.</p>

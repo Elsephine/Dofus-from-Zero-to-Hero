@@ -56,7 +56,8 @@ export async function rpc<T>(fn: string, body: object): Promise<T> {
   if (!res.ok) {
     if (/code invalide/.test(txt)) throw new RpcError('code invalide');
     if (/code trop court/.test(txt)) throw new RpcError('code trop court');
-    throw new RpcError(txt || `HTTP ${res.status}`, res.status >= 500 || res.status === 404);
+    let msg = txt; try { msg = JSON.parse(txt).message ?? txt; } catch { /* texte brut */ }
+    throw new RpcError(msg || `HTTP ${res.status}`, res.status >= 500 || res.status === 404);
   }
   return (txt ? JSON.parse(txt) : null) as T;
 }
@@ -215,3 +216,58 @@ if (typeof window !== 'undefined') {
   // Autre onglet / fenêtre overlay du même navigateur : on relit les coches tout de suite.
   window.addEventListener('storage', e => { if (e.key === LS_DATA || e.key === LS_CODES) { load(); emit(); } });
 }
+
+// ---------- Sauvegarde / restauration dans un fichier ----------
+export interface Backup { app: 'fzth'; version: 1; profile: number; exportedAt: string; entries: [string, Entry][] }
+/** Toute la progression d'un personnage (quêtes, succès, ressources, choix, quantités). */
+export function exportProfile(p: number): Backup {
+  const pre = `${p}|`;
+  return { app: 'fzth', version: 1, profile: p, exportedAt: new Date().toISOString(),
+    entries: [...entries].filter(([k]) => k.startsWith(pre)).map(([k, e]) => [k.slice(pre.length), e]) };
+}
+/** Fusionne une sauvegarde : pour chaque objectif, la version la plus récente gagne. Renvoie le nombre d'objectifs repris. */
+export function importProfile(p: number, b: Backup): number {
+  if (b?.app !== 'fzth' || !Array.isArray(b.entries)) throw new Error('Ce fichier n’est pas une sauvegarde du site.');
+  let n = 0;
+  for (const [id, e] of b.entries) {
+    if (typeof id !== 'string' || typeof e?.done !== 'boolean' || typeof e.at !== 'string') continue;
+    const k = key(p, id); const cur = entries.get(k);
+    if (cur && cur.at >= e.at) continue;
+    entries.set(k, { done: e.done, at: e.at, ...(typeof e.qty === 'number' ? { qty: e.qty } : {}) });
+    pending.add(k); n++;
+  }
+  save(); emit(); void sync();
+  return n;
+}
+
+// ---------- Code oublié ----------
+const tokenKey = (p: number) => `fzth:v2:resetToken:${p}`;
+export const resetToken = (p: number) => { try { return localStorage.getItem(tokenKey(p)); } catch { return null; } };
+/** Demande de réinitialisation : un jeton secret reste sur cet appareil, un coéquipier doit accepter. */
+export async function askReset(p: number) {
+  const t = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
+  await rpc('fzth_reset_ask', { p_profile: p, p_token: t });
+  try { localStorage.setItem(tokenKey(p), t); } catch { /* ignore */ }
+}
+export async function resetStatus(p: number): Promise<'none' | 'pending' | 'approved'> {
+  const t = resetToken(p); if (!t) return 'none';
+  return (await rpc<'none' | 'pending' | 'approved'>('fzth_reset_status', { p_profile: p, p_token: t })) ?? 'none';
+}
+/** Choisit le nouveau code (après accord d'un coéquipier) puis se connecte avec. */
+export async function finishReset(p: number, code: string) {
+  const t = resetToken(p); if (!t) throw new Error('Demande introuvable sur cet appareil.');
+  await rpc('fzth_reset_finish', { p_profile: p, p_token: t, p_new_code: code.trim() });
+  try { localStorage.removeItem(tokenKey(p)); } catch { /* ignore */ }
+  delete hashes[p]; writeLS(LS_HASHES, hashes);
+  return login(p, code);
+}
+export async function listResetRequests(p: number) {
+  return (await rpc<{ profile_id: number; requested_at: string; approved_at: string | null }[]>('fzth_reset_list', { p_profile: p, p_code: codes[p] })) ?? [];
+}
+export const approveReset = (p: number, target: number) => rpc('fzth_reset_approve', { p_profile: p, p_code: codes[p], p_target: target });
+
+// ---------- Signalements d'erreurs ----------
+export interface Report { id: string; profile_id: number; item_id: string; label: string; body: string; created_at: string; resolved: boolean }
+export const addReport = (p: number, item: string, label: string, body: string) => rpc('fzth_report_add', { p_profile: p, p_code: codes[p], p_item: item, p_label: label, p_body: body });
+export const listReports = async (p: number) => (await rpc<Report[]>('fzth_report_list', { p_profile: p, p_code: codes[p] })) ?? [];
+export const resolveReport = (p: number, id: string, resolved: boolean) => rpc('fzth_report_resolve', { p_profile: p, p_code: codes[p], p_id: id, p_resolved: resolved });
