@@ -965,3 +965,14 @@ body[data-theme="dark"] { background-image: radial-gradient(ellipse at top, var(
 .file-btn { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); font-size: inherit; }
 .file-btn input { display: none; }
 .dd-menu button svg, .file-btn svg { vertical-align: -3px; margin-right: 2px; }
+
+/* Correctif : les menus de l'en-tête (cloche, journal, profil, recherche…) passaient derrière la page. */
+.top { overflow: visible !important; z-index: 60; }
+.top::before { border-radius: inherit; }
+.dd-menu, .bell-menu { z-index: 70 !important; }
+.modal { z-index: 90 !important; }
+.toasts { z-index: 95 !important; }
+.page-fade > * { animation-fill-mode: backwards !important; }
+/* En-tête trop large entre 900 et 1680 px : menu en icônes seules (le nom reste en info-bulle). */
+@media (max-width: 1680px) and (min-width: 901px) { .mainnav .lbl { display: none; } .mainnav .ic { margin: 0; } .mainnav button { padding: 6px 9px; } }
+.top { flex-wrap: wrap; }
