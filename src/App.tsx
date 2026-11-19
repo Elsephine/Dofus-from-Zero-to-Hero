@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat } from 'lucide-react';
+import { repeatables } from './data/jeu/quetes';
+import { repTodo } from './model/repeat';
 import { tagIcon } from './ui/QuestTags';
 import { GROUP_KEY, groupQuests, type GroupBy, type QuestGroup } from './model/questGroups';
 import { applyNow, forgetReopen, useOverlayState } from './model/overlayState';
@@ -26,6 +28,7 @@ import { setPresencePage, watchTeamLive } from './model/teamlive';
 import { OnlineNow } from './Presence';
 const Jobs = lazy(() => import('./Jobs').then(m => ({ default: m.Jobs })));
 import { CatchUp } from './CatchUp';
+const Quests = lazy(() => import('./Quests').then(m => ({ default: m.Quests })));
 const Achievements = lazy(() => import('./Achievements').then(m => ({ default: m.Achievements })));
 import { almostDone, achKey, achsForQuest, eventStatus, useAchData } from './model/achievements';
 import { useDungeons } from './model/dungeonData';
@@ -59,7 +62,7 @@ export function App() {
   useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); watchTeamLive(profile?.id ?? null); }, [profile?.id]);
   // Page affichée, visible par les coéquipiers (« Volrod · Dofus Cauchemar »).
   useEffect(() => {
-    const labels: Record<string, string> = { home: 'Accueil', jobs: 'Métiers', team: 'Équipe', almanax: 'Almanax', messages: 'Messages', tools: 'Outils', succes: 'Succès' };
+    const labels: Record<string, string> = { home: 'Accueil', jobs: 'Métiers', team: 'Équipe', almanax: 'Almanax', messages: 'Messages', tools: 'Outils', succes: 'Succès', quetes: 'Quêtes' };
     setPresencePage(labels[view] ?? dofusInfo.find(d => d.id === view)?.name ?? 'Site');
   }, [view]);
   // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
@@ -77,6 +80,7 @@ export function App() {
     try { localStorage.setItem(k, JSON.stringify(now)); } catch { /* ignore */ }
   });
   const { unread } = useMessages();
+  const repLeft = profile ? repTodo(repeatables, profile.id, isDone).length : 0;
 
   // Fenêtre overlay séparée (navigateurs sans mini-fenêtre) : #overlay
   if (location.hash === '#overlay' && profile) return <Suspense fallback={null}><OverlayView profileId={profile.id} /></Suspense>;
@@ -104,11 +108,13 @@ export function App() {
 
   return (
     <div className="app">
+      <div className="perso-backdrop" aria-hidden style={{ backgroundImage: `url(${import.meta.env.BASE_URL}persos/${profile.image})` }} />
       <header className="top" style={{ '--hero': `url(${import.meta.env.BASE_URL}persos/${profile.image})` } as React.CSSProperties}>
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages', 'succes'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic"><Egg /></span><span className="lbl">Dofus</span></button>
+          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages', 'succes', 'quetes'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic"><Egg /></span><span className="lbl">Dofus</span></button>
           <button className={view === 'jobs' ? 'on' : ''} title="Métiers & ressources" onClick={() => setView('jobs')}><span className="ic"><Hammer /></span><span className="lbl">Métiers</span></button>
+          <button className={view === 'quetes' ? 'on' : ''} title="Quêtes répétables et alignement" onClick={() => setView('quetes')}><span className="ic"><Repeat />{repLeft > 0 && <span className="badge">{repLeft}</span>}</span><span className="lbl">Quêtes</span></button>
           <button className={view === 'succes' ? 'on' : ''} title="Succès" onClick={() => setView('succes')}><span className="ic"><Trophy /></span><span className="lbl">Succès</span></button>
           <button className={view === 'team' ? 'on' : ''} title="Équipe" onClick={() => setView('team')}><span className="ic"><Users /></span><span className="lbl">Équipe</span></button>
           <button className={view === 'almanax' ? 'on' : ''} title="Almanax" onClick={() => setView('almanax')}><span className="ic"><CalendarDays /></span><span className="lbl">Almanax</span></button>
@@ -134,7 +140,7 @@ export function App() {
 
       <Suspense fallback={<div className="panel page-loading"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div>}>
       <div key={view} className="page-fade">
-      {view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
+      {view === 'quetes' ? <Quests profileId={profile.id} isDone={isDone} /> : view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
           <div className="with-rail">
             <DofusPage key={info.id} info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
@@ -211,6 +217,10 @@ function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone:
   if (dj) cards.push(<button key="dj" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic"><Castle /></span><span><small>Donjon à préparer</small><strong>{dj.name}</strong><em>{dj.left} succès à cumuler en équipe{dj.key ? ` · 🗝 ${dj.key}` : ''}</em></span></button>);
   if (almost) cards.push(<button key="ach" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic"><Trophy /></span><span><small>Succès presque fini</small><strong>{almost.a.n}</strong><em>{almost.done}/{almost.total} objectifs · {almost.a.p} pts</em></span></button>);
   if (ev) cards.push(<button key="ev" className="next-card hot" onClick={() => onOpen('succes')}><span className="nc-ic"><AlarmClock /></span><span><small>{ev.days === 0 ? 'C’est la période' : `Dans ~${ev.days} jours`}</small><strong>Événement {ev.e.label}</strong><em>{ev.left.length} succès · {ev.pts} pts à prendre</em></span></button>);
+  const rep = repTodo(repeatables, profileId, isDone);
+  const hasFav = repeatables.some(q => isDone(profileId, `repfav:${q.id}`));
+  if (rep.length) cards.unshift(<button key="rep" className="next-card hot" onClick={() => onOpen('quetes')}><span className="nc-ic"><Repeat /></span><span><small>À ne pas oublier</small><strong>{rep.length} quête{rep.length > 1 ? 's' : ''} répétable{rep.length > 1 ? 's' : ''} à faire</strong><em>{rep.slice(0, 2).map(q => q.n).join(' · ')}{rep.length > 2 ? '…' : ''}</em></span></button>);
+  else if (!hasFav) cards.push(<button key="rep" className="next-card" onClick={() => onOpen('quetes')}><span className="nc-ic"><Repeat /></span><span><small>Quêtes répétables</small><strong>Choisis celles que tu fais</strong><em>Elles seront rappelées ici chaque jour</em></span></button>);
   cards.push(<button key="alm" className="next-card" onClick={() => onOpen('almanax')}><span className="nc-ic"><CalendarDays /></span><span><small>Chaque jour</small><strong>Offrande Almanax</strong><em>Voir l’offrande et le bonus du jour</em></span></button>);
   return (
     <section className="next-actions">

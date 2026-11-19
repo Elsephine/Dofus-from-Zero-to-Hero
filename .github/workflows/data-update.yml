@@ -31,7 +31,7 @@ jobs:
         if: steps.v.outputs.latest != steps.v.outputs.current
         run: |
           mkdir -p /tmp/d3
-          for f in achievements achievement_categories achievement_objectives challenges dungeons fr items recipes; do
+          for f in achievements achievement_categories achievement_objectives challenges dungeons fr items recipes quests quest_categories; do
             curl -sSfL -o /tmp/d3/$f.json "https://github.com/dofusdude/dofus3-main/releases/download/${{ steps.v.outputs.latest }}/$f.json"
           done
       - name: Régénérer les fichiers
@@ -39,6 +39,7 @@ jobs:
         run: |
           python3 -I scripts/jeu/gen_donjons.py /tmp/d3 "${{ steps.v.outputs.latest }}" src/data/jeu/donjons.ts
           python3 -I scripts/jeu/gen_succes.py /tmp/d3 /tmp/d3 "${{ steps.v.outputs.latest }}" src/data/jeu
+          python3 -I scripts/jeu/gen_quetes.py /tmp/d3 "${{ steps.v.outputs.latest }}" src/data/jeu/quetes.ts
       - name: Vérifier que le site se construit
         if: steps.v.outputs.latest != steps.v.outputs.current
         run: npm ci && npm run build

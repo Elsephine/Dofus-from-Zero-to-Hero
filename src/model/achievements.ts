@@ -41,7 +41,7 @@ export const qkey = (s: string) => s.toLowerCase().replace(/œ/g, 'oe').replace(
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
 // Index des quêtes des Dofus par nom : un objectif de succès qui est une quête se coche tout seul quand la quête est faite.
 let questIdx: Map<string, string[]> | null = null;
-function questIds(name: string) {
+export function questIds(name: string) {
   if (!questIdx) {
     questIdx = new Map();
     for (const raw of catalog) for (const sec of raw.sections) for (const i of sec.items) {
