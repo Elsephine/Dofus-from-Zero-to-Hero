@@ -125,3 +125,36 @@ end $$;
 
 revoke all on function public.fzth_stuff_list(integer, text), public.fzth_stuff_add(integer, text, text, text), public.fzth_stuff_delete(integer, text, uuid) from public;
 grant execute on function public.fzth_stuff_list(integer, text), public.fzth_stuff_add(integer, text, text, text), public.fzth_stuff_delete(integer, text, uuid) to anon;
+
+-- ---------- Équipe : chacun choisit de partager (ou non) sa progression avec les deux autres, en lecture seule ----------
+alter table public.fzth_profile_code add column if not exists shared boolean not null default false;
+
+create or replace function public.fzth_set_share(p_profile integer, p_code text, p_shared boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  update fzth_profile_code set shared = p_shared where profile_id = p_profile;
+end $$;
+
+-- Qui partage ? (0, 1, 2 ; absent = pas encore de code)
+create or replace function public.fzth_team_status(p_profile integer, p_code text)
+returns table (profile_id integer, shared boolean)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select c.profile_id, c.shared from fzth_profile_code c order by c.profile_id;
+end $$;
+
+-- Progression des AUTRES personnages qui partagent la leur (lecture seule).
+create or replace function public.fzth_team_get(p_profile integer, p_code text)
+returns table (profile_id integer, item_id text, done boolean, updated_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select p.profile_id, p.item_id, p.done, p.updated_at from fzth_progress p
+    join fzth_profile_code c on c.profile_id = p.profile_id
+    where c.shared and p.profile_id <> p_profile;
+end $$;
+
+revoke all on function public.fzth_set_share(integer, text, boolean), public.fzth_team_status(integer, text), public.fzth_team_get(integer, text) from public;
+grant execute on function public.fzth_set_share(integer, text, boolean), public.fzth_team_status(integer, text), public.fzth_team_get(integer, text) to anon;

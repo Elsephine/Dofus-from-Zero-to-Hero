@@ -262,3 +262,34 @@ body[data-world="none"] { --world-accent: #d8ad62; --world-bright: #f0cf8c; --wo
 .almanax .toolbox .detail-head { flex-wrap: wrap; }
 .almanax .toolbox h3 { white-space: nowrap; }
 .alm-head .mult input { width: 64px; }
+
+/* Équipe */
+.team-page { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.team-page h2 { color: var(--gold2); font-size: 26px; }
+.members { display: flex; gap: 10px; flex-wrap: wrap; }
+.member { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 1px solid var(--line); border-radius: 30px; background: #0003; }
+.member span { display: flex; flex-direction: column; } .member small { color: var(--muted); font-size: 11px; }
+.member.hidden-member { opacity: .45; }
+.team-tools select { font: inherit; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--world-border); background: var(--bg); color: var(--text); }
+.team-tools { align-items: center; }
+.team-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.team-table th { text-align: left; color: var(--gold); font-weight: normal; font-family: Georgia, serif; padding: 6px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+.team-table td { padding: 5px 6px; border-bottom: 1px solid #ffffff0a; }
+.team-table .chips-cell { display: flex; flex-wrap: wrap; gap: 3px; }
+.team-table .st { text-align: center; width: 90px; font-size: 15px; }
+.st.ok { color: var(--green); } .st.todo { color: #ff9f9f; } .st.na { color: var(--muted); }
+
+/* Overlay (mini-fenêtre) */
+body.pip { margin: 0; }
+.overlay { display: flex; flex-direction: column; gap: 6px; padding: 8px; min-height: 100vh; box-sizing: border-box; font-size: 13px; }
+.overlay header { display: flex; align-items: center; gap: 6px; }
+.overlay select { flex: 1; font: inherit; padding: 4px; border-radius: 6px; border: 1px solid var(--world-border); background: var(--bg); color: var(--text); }
+.ov-progress { display: flex; align-items: center; gap: 6px; } .ov-progress .bar { flex: 1; } .ov-progress small { color: var(--muted); }
+.overlay ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow: auto; flex: 1; }
+.overlay li { border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: #0003; }
+.overlay li.first { border-color: var(--world-accent); box-shadow: 0 0 10px var(--world-glow); }
+.overlay li label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.overlay li small { display: block; color: var(--muted); font-size: 11px; }
+.overlay .chips { justify-content: flex-start; max-width: none; margin: 4px 0 0 24px; }
+.overlay .hint { padding: 0 0 4px; }
+.overlay footer { display: flex; gap: 6px; } .overlay footer > * { flex: 1; text-align: center; font-size: 12px; }

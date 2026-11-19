@@ -19,6 +19,8 @@ let pending = new Set<string>();
 let codes: Record<string, string> = {};
 let hashes: Record<string, string> = {};
 let status: SyncStatus = 'local';
+let team: Record<number, boolean> = {}; // qui partage sa progression (serveur)
+let teamLoaded = false;
 let lastSync: Date | null = null;
 let version = 0;
 const listeners = new Set<() => void>();
@@ -120,6 +122,15 @@ async function doSync() {
         const local = entries.get(k);
         if (!local || Date.parse(r.updated_at) >= Date.parse(local.at)) entries.set(k, { done: r.done, at: r.updated_at });
       }
+      // Équipe : qui partage, et la progression des autres (lecture seule, jamais renvoyée au serveur).
+      const st = await rpc<{ profile_id: number; shared: boolean }[]>('fzth_team_status', { p_profile: p, p_code: code });
+      team = Object.fromEntries((st ?? []).map(r => [r.profile_id, r.shared])); teamLoaded = true;
+      for (const k of [...entries.keys()]) { const op = Number(k.split('|')[0]); if (!codes[op] && !team[op]) entries.delete(k); } // partage retiré
+      const others = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string }[]>('fzth_team_get', { p_profile: p, p_code: code });
+      for (const r of others ?? []) {
+        if (codes[r.profile_id]) continue; // personnage aussi déverrouillé ici : on garde sa propre synchro
+        entries.set(key(r.profile_id, r.item_id), { done: r.done, at: r.updated_at });
+      }
     } catch (e) {
       if ((e as RpcError).message === 'code invalide') { delete codes[p]; writeLS(LS_CODES, codes); failed = 'badcode'; } // code changé ailleurs
       else failed = failed ?? 'offline';
@@ -141,6 +152,12 @@ export function toggle(profile: number, id: string, done?: boolean) {
   void sync();
 }
 
+export async function setShare(p: number, shared: boolean) {
+  await rpc('fzth_set_share', { p_profile: p, p_code: codes[p], p_shared: shared });
+  team = { ...team, [p]: shared }; emit(); void sync();
+}
+export const teamInfo = () => ({ team, teamLoaded });
+
 export function isDone(profile: number, id: string) { return !!entries.get(key(profile, id))?.done; }
 
 export function useProgress() {
@@ -155,4 +172,6 @@ if (typeof window !== 'undefined') {
   setInterval(() => { if (document.visibilityState === 'visible') void sync(); }, POLL_MS);
   window.addEventListener('focus', () => void sync());
   window.addEventListener('online', () => void sync());
+  // Autre onglet / fenêtre overlay du même navigateur : on relit les coches tout de suite.
+  window.addEventListener('storage', e => { if (e.key === LS_DATA || e.key === LS_CODES) { load(); emit(); } });
 }

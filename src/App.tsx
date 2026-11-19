@@ -9,6 +9,8 @@ import { requirements } from './model/requirements';
 import { Tools } from './Tools';
 import { Jobs } from './Jobs';
 import { Almanax } from './Almanax';
+import { Team } from './Team';
+import { OverlayView, openOverlay } from './Overlay';
 import { picksFor, setPick, viewFor } from './model/choices';
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
@@ -24,8 +26,13 @@ export function App() {
   const [asking, setAsking] = useState<number | null>(null);
   const profile = active !== null && isUnlocked(active) ? profiles.find(p => p.id === active) : undefined;
   const info = dofusInfo.find(d => d.id === view);
+  const [lastDofus, setLastDofus] = remember<string>('fzth:v2:lastDofus', 'dom-de-pin');
+  useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
+
+  // Fenêtre overlay séparée (navigateurs sans mini-fenêtre) : #overlay
+  if (location.hash === '#overlay' && profile) return <OverlayView profileId={profile.id} />;
 
   const open = (pid: number) => { if (isUnlocked(pid)) { setActive(pid); setView('home'); } else setAsking(pid); };
 
@@ -52,21 +59,23 @@ export function App() {
       <header className="top">
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax'].includes(view) ? 'on' : ''} onClick={() => setView('home')}>Dofus</button>
+          <button className={!['tools', 'jobs', 'almanax', 'team'].includes(view) ? 'on' : ''} onClick={() => setView('home')}>Dofus</button>
           <button className={view === 'jobs' ? 'on' : ''} onClick={() => setView('jobs')}>Métiers & ressources</button>
+          <button className={view === 'team' ? 'on' : ''} onClick={() => setView('team')}>Équipe</button>
           <button className={view === 'almanax' ? 'on' : ''} onClick={() => setView('almanax')}>Almanax</button>
           <button className={view === 'tools' ? 'on' : ''} onClick={() => setView('tools')}>Outils</button>
         </nav>
         <div className="me">
           <img className="avatar big" src={`${import.meta.env.BASE_URL}persos/${profile.image}`} alt="" />
           <span><strong>{profile.name}</strong> <small>{profile.classe}</small></span>
+          <button className="primary" onClick={() => void openOverlay(profile.id, info?.id ?? lastDofus)} title="Mini-fenêtre à garder à côté de Dofus">⧉ Overlay</button>
           <button onClick={() => setActive(null)} title="Revenir au choix du personnage">Changer</button>
           <button onClick={() => { logout(profile.id); setActive(null); }} title="Oublier le code sur cet appareil">Se déconnecter</button>
         </div>
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
       </header>
 
-      {view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
+      {view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
     </div>
