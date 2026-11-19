@@ -52,16 +52,20 @@ export function AchRow({ d, a, profileId, isDone, showCat }: { d: AchData; a: Ac
   const { team } = teamInfo();
   const mates = profiles.filter(p => p.id !== profileId && team[p.id]);
   return (
-    <li className={`ach-row${pr.complete ? ' done' : ''}`}>
+    <li className={`ach-row${pr.complete ? ' done' : ''}${open ? ' open' : ''}`}>
       <div className="ach-main">
         <input type="checkbox" checked={pr.complete} onChange={e => { if (!pr.complete) burst(e.currentTarget, true); toggle(profileId, achKey(a.id)); }} title="J’ai ce succès" />
-        <div className="ach-txt" onClick={() => a.o && setOpen(!open)} role={a.o ? 'button' : undefined}>
-          <strong>{a.n}</strong> <span className="pts">{a.p} pts</span>
-          {showCat && <small className="meta"> · {d.top(a.c).name}{d.catOf.get(a.c)!.parent ? ` › ${d.catOf.get(a.c)!.name}` : ''}</small>}
-          <br /><small className="meta">{a.d}</small>
-          {a.o && <span className="ach-obj-bar" title={`${pr.done}/${pr.total} objectifs`}><i style={{ width: `${(pr.done / pr.total) * 100}%` }} /><b>{pr.done}/{pr.total} {open ? '▴' : '▾'}</b></span>}
+        <div className="ach-txt">
+          <strong>{a.n}</strong>
+          <small>{showCat && <em>{d.top(a.c).name}{d.catOf.get(a.c)!.parent ? ` › ${d.catOf.get(a.c)!.name}` : ''} · </em>}{a.d}</small>
         </div>
-        <span className="who">{mates.map(m => <img key={m.id} src={avatar(m.image)} alt={m.name} title={`${m.name} : ${isDone(m.id, achKey(a.id)) ? 'fait' : 'pas encore'}`} className={isDone(m.id, achKey(a.id)) ? 'ok' : 'no'} />)}</span>
+        {a.o && (
+          <button type="button" className="ach-prog" onClick={() => setOpen(!open)} title="Voir les objectifs">
+            <span>{pr.done}/{pr.total}</span><i><b style={{ width: `${(pr.done / pr.total) * 100}%` }} /></i>{open ? '▴' : '▾'}
+          </button>
+        )}
+        {mates.length > 0 && <span className="who">{mates.map(m => <img key={m.id} src={avatar(m.image)} alt={m.name} title={`${m.name} : ${isDone(m.id, achKey(a.id)) ? 'fait' : 'pas encore'}`} className={isDone(m.id, achKey(a.id)) ? 'ok' : 'no'} />)}</span>}
+        <span className="pts">{a.p}</span>
       </div>
       {open && a.o && (
         <ul className="ach-objs">{a.o.map((o, i) => {
@@ -74,6 +78,7 @@ export function AchRow({ d, a, profileId, isDone, showCat }: { d: AchData; a: Ac
     </li>
   );
 }
+
 
 function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; isDone: IsDone }) {
   const tops = d.cats.filter(c => !c.parent);
@@ -108,7 +113,7 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
         </div>
         {groups.map(g => (
           <div key={g.id} className="ach-group">
-            <h3>{g.name} <small className="meta">{g.items.length}</small></h3>
+            <h3 className="ach-gh"><span>{g.name}</span><small>{g.items.length}</small></h3>
             <ul className="ach-rows">{g.items.map(a => <AchRow key={a.id} d={d} a={a} profileId={profileId} isDone={isDone} showCat={!!nq} />)}</ul>
           </div>
         ))}

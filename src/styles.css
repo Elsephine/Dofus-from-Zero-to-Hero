@@ -1133,3 +1133,77 @@ body:not([data-theme="dark"]) .rc-name small { color: var(--ok); }
 .ov-banner > svg { color: var(--gold); }
 .ov-banner.soft { border-style: dashed; }
 .ov-flash { flex: none; display: flex; flex-direction: column; gap: 3px; padding: 6px 10px; border-radius: 10px; font-size: 12px; background: rgb(93 154 55 / .18); border: 1px solid var(--ok2); animation: pop-in .35s ease; }
+
+/* ===== Épuré : quêtes ===== */
+.dp-quests { gap: 0 !important; border-radius: 12px; overflow: hidden; background: linear-gradient(180deg, var(--parch), var(--parch2)); border: 1px solid var(--parch-line);
+  box-shadow: 0 2px 10px rgb(0 0 0 / .15); }
+.dp-quests .quest { padding: 9px 14px !important; border-radius: 0 !important; background: none !important; border: none !important; box-shadow: none !important; border-top: 1px solid rgb(120 85 40 / .18) !important; margin: 0 !important; }
+.dp-quests .quest:first-child { border-top: none !important; }
+.dp-quests .quest:hover { background: rgb(255 255 255 / .25) !important; }
+.dp-quests .quest.next { background: linear-gradient(90deg, rgb(200 40 60 / .12), transparent 70%) !important; box-shadow: inset 3px 0 0 var(--world-accent) !important; }
+.dp-quests .quest.done { opacity: .5; filter: none; }
+.dp-quests .quest.done .qname, .dp-quests .quest.done .qname a { text-decoration: line-through; text-decoration-color: rgb(60 40 20 / .5); }
+.dp-quests .quest.in-group { box-shadow: inset 3px 0 0 rgb(93 154 55 / .55) !important; }
+.dp-quests .quest.group-cont { border-top: 1px dashed rgb(93 154 55 / .35) !important; }
+.dp-quests .quest.next.in-group { box-shadow: inset 3px 0 0 var(--world-accent) !important; }
+.quest .line { display: flex; align-items: center; gap: 10px; }
+.q-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.dp-quests .qname { font-weight: 600; font-size: 14px; }
+.q-ach { color: var(--gold); vertical-align: -2px; margin-right: 4px; }
+.q-warn { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; border-radius: 50%; font-size: 10px; font-weight: 700; background: #e0a73d; color: #fff; vertical-align: 1px; }
+.q-sub { font-size: 12px; font-style: italic; color: rgb(59 42 24 / .7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-hint { display: flex; align-items: center; gap: 5px; font-size: 12px; font-style: italic; color: #4c6b2c; margin: 0 0 4px 30px; }
+.q-tags { display: flex; align-items: center; gap: 10px; flex: none; color: rgb(59 42 24 / .65); font-size: 12px; }
+.q-tag { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.q-tag b { font-weight: 700; font-size: 11px; }
+.q-tag.dj { color: #7a1d2b; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+.q-tag.f-metier { color: #3f6b2a; } .q-tag.f-special { color: #5a3b9e; } .q-tag.f-bashing { color: #6b4a22; }
+.q-tag.lvl::before { content: 'niv. '; opacity: .7; } .q-tag.k { color: #8a5a0a; font-weight: 600; }
+.q-dot { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+.q-dot.ocre { background: #e0a040; color: #fff; } .q-dot.tdm { background: #3b6ea0; color: #fff; }
+.dp-quests .report-btn { margin-left: 0; }
+.dp-quests .hint { display: none; }
+@media (max-width: 900px) {
+  .dp-quests .quest .line { flex-wrap: wrap; row-gap: 3px; }
+  .q-tags { flex-basis: 100%; padding-left: 30px; flex-wrap: wrap; gap: 8px; }
+  .dp-quests .report-btn { position: absolute; right: 8px; top: 8px; }
+  .dp-quests .quest { position: relative; }
+}
+
+/* ===== Épuré : succès ===== */
+.ach-gh { display: flex; align-items: baseline; gap: 8px; margin: 14px 2px 6px !important; font: 600 12px system-ui, sans-serif !important; letter-spacing: .08em; text-transform: uppercase; color: var(--muted) !important; }
+.ach-gh small { font-weight: 500; opacity: .7; }
+.ach-gh::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.ach-rows { gap: 0 !important; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel2); }
+.ach-row { border: none !important; border-radius: 0 !important; background: none !important; padding: 9px 12px !important; border-top: 1px solid var(--line) !important; }
+.ach-row:first-child { border-top: none !important; }
+.ach-row:hover { background: rgb(var(--tint) / .04) !important; }
+.ach-row.done { opacity: .5; }
+.ach-row.done strong { text-decoration: line-through; text-decoration-color: rgb(var(--tint) / .4); }
+.ach-main { align-items: center !important; gap: 12px !important; }
+.ach-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ach-txt strong { font-size: 14px; font-weight: 600; }
+.ach-txt small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach-txt small em { font-style: normal; color: var(--world-accent); }
+.ach-prog { flex: none; display: flex; align-items: center; gap: 6px; padding: 3px 8px; font-size: 12px; border-radius: 12px; background: rgb(var(--tint) / .05); }
+.ach-prog i { display: block; width: 54px; height: 4px; border-radius: 2px; background: rgb(var(--tint) / .12); overflow: hidden; }
+.ach-prog i b { display: block; height: 100%; background: linear-gradient(90deg, var(--world-accent), var(--gold)); }
+.ach-row .pts { flex: none; min-width: 38px; text-align: center; padding: 2px 7px; border-radius: 10px; font-size: 12px; font-weight: 700; color: #a8761f; background: rgb(216 173 98 / .16); }
+body[data-theme="dark"] .ach-row .pts { color: var(--gold2); }
+.ach-row .pts::after { content: ' pts'; font-weight: 500; font-size: 10px; opacity: .8; }
+.ach-obj-bar { display: none !important; }
+.ach-objs { margin: 8px 0 2px 30px !important; padding: 8px 10px !important; border-radius: 8px; background: rgb(var(--tint) / .04); }
+.ach-cats button { padding: 7px 10px; }
+@media (max-width: 900px) { .ach-txt small { white-space: normal; } .ach-prog i { display: none; } }
+/* Catégories de succès plus légères */
+.ach-cats { gap: 1px !important; }
+.ach-cats button { background: none; border: none; border-radius: 8px; border-left: 3px solid transparent; }
+.ach-cats button:hover { background: rgb(var(--tint) / .05); }
+.ach-cats button.on { background: var(--world-glow); border-left-color: var(--world-accent); box-shadow: none; }
+.ach-cats button i { height: 2px; opacity: .7; }
+@media (max-width: 900px) {
+  .succes .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .succes .tabs button { flex: none; }
+  .ach-cats button { border-left: none; border-bottom: 3px solid transparent; }
+  .ach-cats button.on { border-bottom-color: var(--world-accent); }
+}

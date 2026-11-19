@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2 } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info } from 'lucide-react';
+import { tagIcon } from './ui/QuestTags';
 import { applyNow, forgetReopen, useOverlayState } from './model/overlayState';
 import { install, useInstall } from './model/install';
 import { ReportButton, ReportDialog } from './Report';
@@ -863,30 +864,34 @@ function SyncBadge({ status, lastSync, pending }: { status: SyncStatus; lastSync
 }
 
 export function QuestRow({ item, done, grouped, next, onToggle }: { item: ItemView; done: boolean; grouped?: boolean; next?: boolean; onToggle: () => void }) {
+  const objs = (item.objectives ?? []).filter(o => !(o.type === 'donjon' && item.dungeon?.name));
+  const sub = [item.tag, ...(item.notes ?? [])].filter(Boolean) as string[];
   return (
     <li className={`quest${done ? ' done' : ''}${next ? ' next' : ''}${item.group ? ' in-group' : ''}${grouped ? ' group-cont' : ''}`}>
-      {item.hint && <div className="hint">ℹ {item.hint}</div>}
+      {item.hint && !grouped && <div className="q-hint">{item.group ? <Link2 size={12} /> : <Info size={12} />} {item.hint}</div>}
       <label className="line">
         <input type="checkbox" checked={done} onChange={e => { if (!done) burst(e.currentTarget); onToggle(); }} />
-        <span className="qname">
-          {item.kind === 'achievement' && <span className="chip ach">Succès</span>}
-          {item.url ? <a href={item.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{item.name}</a> : item.name}
-          {item.toConfirm && <span className="chip warn" title="Lien ou donnée à confirmer">?</span>}
-          <ReportButton id={item.id} label={item.name} />
+        <span className="q-main">
+          <span className="qname">
+            {item.kind === 'achievement' && <Trophy size={13} className="q-ach" />}
+            {item.url ? <a href={item.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>{item.name}</a> : item.name}
+            {item.toConfirm && <span className="q-warn" title="Lien ou donnée à confirmer">?</span>}
+          </span>
+          {sub.length > 0 && <span className="q-sub">{sub.join(' · ')}</span>}
         </span>
-        <span className="chips">
-          {item.dungeon?.captureOcre && <span className="chip ocre" title="Donjon à capturer pour le Dofus Ocre">Ocre</span>}
-          {item.dungeon?.tourDuMonde && <span className="chip tdm" title="Donjon demandé dans le Tour du monde">Tour du monde</span>}
-          {item.dungeon?.name && <span className="chip dj"><Castle size={12} /> {item.dungeon.name}</span>}
-          {item.tag && <span className="chip">{item.tag}</span>}
-          {item.objectives?.filter(o => !(o.type === 'donjon' && item.dungeon?.name)).map((o, k) => {
-            const ic = iconInfo(o.type);
-            return <span key={k} className={`chip obj f-${ic.family} t-${o.type}`} title={ic.label}>{ic.short}{o.count ? ` ×${o.count}` : ''}{o.label ? ` · ${o.label}` : ''}</span>;
+        <span className="q-tags">
+          {item.dungeon?.name && <span className="q-tag dj" title={`Donjon : ${item.dungeon.name}`}><Castle size={14} /> {item.dungeon.name}</span>}
+          {item.dungeon?.captureOcre && <span className="q-dot ocre" title="Donjon à capturer pour le Dofus Ocre">Ocre</span>}
+          {item.dungeon?.tourDuMonde && <span className="q-dot tdm" title="Donjon demandé dans le Tour du monde">TdM</span>}
+          {objs.map((o, k) => {
+            const ic = iconInfo(o.type); const I = tagIcon(o.type);
+            const full = `${ic.label}${o.count ? ` ×${o.count}` : ''}${o.label ? ` : ${o.label}` : ''}`;
+            return <span key={k} className={`q-tag f-${ic.family}`} title={full}><I size={14} />{o.count ? <b>{o.count}</b> : null}{o.type === 'donjon' && o.label ? ` ${o.label}` : ''}</span>;
           })}
-          {item.notes?.map((n, k) => <span key={'n' + k} className="chip note">{n}</span>)}
-          {item.level !== undefined && <span className="chip lvl">niv. {item.level}</span>}
-          {item.kamas !== undefined && item.kamas > 0 && <span className="chip k">{item.kamas.toLocaleString('fr-FR')} K</span>}
+          {item.level !== undefined && <span className="q-tag lvl" title="Niveau conseillé">{item.level}</span>}
+          {item.kamas !== undefined && item.kamas > 0 && <span className="q-tag k" title="Kamas gagnés">{item.kamas.toLocaleString('fr-FR')} K</span>}
         </span>
+        <ReportButton id={item.id} label={item.name} />
       </label>
     </li>
   );
