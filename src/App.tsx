@@ -7,6 +7,7 @@ import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
 import { requirements } from './model/requirements';
 import { Tools } from './Tools';
+import { Jobs } from './Jobs';
 import { picksFor, setPick, viewFor } from './model/choices';
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
@@ -50,7 +51,8 @@ export function App() {
       <header className="top">
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={view !== 'tools' ? 'on' : ''} onClick={() => setView('home')}>Dofus</button>
+          <button className={view !== 'tools' && view !== 'jobs' ? 'on' : ''} onClick={() => setView('home')}>Dofus</button>
+          <button className={view === 'jobs' ? 'on' : ''} onClick={() => setView('jobs')}>Métiers & ressources</button>
           <button className={view === 'tools' ? 'on' : ''} onClick={() => setView('tools')}>Outils</button>
         </nav>
         <div className="me">
@@ -62,7 +64,7 @@ export function App() {
         <SyncBadge status={status} lastSync={lastSync} pending={pendingCount} />
       </header>
 
-      {view === 'tools' ? <Tools profileId={profile.id} /> : info
+      {view === 'tools' ? <Tools profileId={profile.id} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? <DofusPage info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
         : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
     </div>

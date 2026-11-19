@@ -201,3 +201,25 @@ body[data-world="none"] { --world-accent: #d8ad62; --world-bright: #f0cf8c; --wo
 .stuff-list li a { flex: 1; }
 .stuff-list small { color: var(--muted); }
 .stuff-list button { padding: 2px 6px; font-size: 11px; }
+
+/* Métiers & ressources */
+.jobs { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.jobs h2 { color: var(--gold2); font-size: 22px; }
+.jobs h3 { color: var(--gold); font-size: 16px; }
+.job-stats { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.job-stats > div { background: #0003; border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; display: flex; flex-direction: column; min-width: 120px; }
+.job-stats strong { font: 22px Georgia, serif; color: var(--world-bright); }
+.job-stats span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.job-stats .mult { margin-left: auto; font-size: 14px; }
+.tabs.always { display: flex; flex-wrap: wrap; }
+.tabs small { color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.notice { margin: 8px 0; padding: 8px 10px; border-left: 3px solid var(--world-accent); background: #ffffff08; border-radius: 6px; font-size: 13px; }
+.res-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; margin-top: 10px; }
+.res-card { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #ffffff06; cursor: pointer; }
+.res-card:hover { border-color: var(--world-border); }
+.res-card .rname { flex: 1; }
+.res-card .qty { color: var(--gold2); font-variant-numeric: tabular-nums; }
+.res-card.done { opacity: .45; }
+.res-card.done .rname { text-decoration: line-through; }
+.sources { margin-top: auto; }
