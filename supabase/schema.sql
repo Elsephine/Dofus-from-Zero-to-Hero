@@ -86,3 +86,42 @@ revoke all on function public.fzth_check(integer, text), public.fzth_status(inte
   public.fzth_get(integer, text), public.fzth_set(integer, text, jsonb) from public;
 grant execute on function public.fzth_status(integer), public.fzth_login(integer, text),
   public.fzth_get(integer, text), public.fzth_set(integer, text, jsonb) to anon;
+
+-- ---------- Outils : bibliothèque de stuffs DofusBook, partagée entre les 3 personnages ----------
+create table if not exists public.fzth_stuff (
+  id uuid primary key default gen_random_uuid(),
+  profile_id integer not null check (profile_id between 0 and 2), -- qui l'a ajouté
+  name text not null check (length(name) between 1 and 90),
+  url text not null check (url ~ '^https://' and length(url) <= 500),
+  created_at timestamptz not null default now()
+);
+alter table public.fzth_stuff enable row level security;
+revoke all on public.fzth_stuff from anon, authenticated;
+
+create or replace function public.fzth_stuff_list(p_profile integer, p_code text)
+returns table (id uuid, profile_id integer, name text, url text, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  return query select s.id, s.profile_id, s.name, s.url, s.created_at from fzth_stuff s order by s.created_at desc;
+end $$;
+
+create or replace function public.fzth_stuff_add(p_profile integer, p_code text, p_name text, p_url text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare new_id uuid;
+begin
+  perform fzth_check(p_profile, p_code);
+  if (select count(*) from fzth_stuff) >= 500 then raise exception 'bibliothèque pleine'; end if;
+  insert into fzth_stuff (profile_id, name, url) values (p_profile, trim(p_name), trim(p_url)) returning id into new_id;
+  return new_id;
+end $$;
+
+create or replace function public.fzth_stuff_delete(p_profile integer, p_code text, p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform fzth_check(p_profile, p_code);
+  delete from fzth_stuff where id = p_id;
+end $$;
+
+revoke all on function public.fzth_stuff_list(integer, text), public.fzth_stuff_add(integer, text, text, text), public.fzth_stuff_delete(integer, text, uuid) from public;
+grant execute on function public.fzth_stuff_list(integer, text), public.fzth_stuff_add(integer, text, text, text), public.fzth_stuff_delete(integer, text, uuid) to anon;

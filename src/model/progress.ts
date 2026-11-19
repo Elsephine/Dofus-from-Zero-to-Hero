@@ -39,8 +39,8 @@ async function sha(p: number, code: string) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-class RpcError extends Error { constructor(msg: string, public network = false) { super(msg); } }
-async function rpc<T>(fn: string, body: object): Promise<T> {
+export class RpcError extends Error { constructor(msg: string, public network = false) { super(msg); } }
+export async function rpc<T>(fn: string, body: object): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${cloud.url}/rest/v1/rpc/${fn}`, {
@@ -61,6 +61,7 @@ async function rpc<T>(fn: string, body: object): Promise<T> {
 
 // ---------- Codes des personnages ----------
 export const isUnlocked = (p: number) => !!codes[p];
+export const codeFor = (p: number) => codes[p];
 
 /** true si le personnage a déjà un code (serveur, sinon ce navigateur) ; null si on ne sait pas. */
 export async function hasCode(p: number): Promise<boolean | null> {

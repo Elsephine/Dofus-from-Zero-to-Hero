@@ -176,3 +176,28 @@ body[data-world="none"] { --world-accent: #d8ad62; --world-bright: #f0cf8c; --wo
 .code-box { align-items: stretch; text-align: center; }
 .code-box h2 { color: var(--gold2); }
 @media (max-width: 900px) { .landing .team { grid-template-columns: 1fr; } .landing .portrait { height: 22vh; } .landing-title { font-size: 26px; } }
+
+/* Navigation + Outils */
+.mainnav { display: flex; gap: 4px; }
+.mainnav button.on { border-color: var(--world-accent); color: var(--world-bright); }
+.tools { flex: 1; min-height: 0; overflow: auto; }
+.eyebrow { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--world-accent); }
+.tools h2 { color: var(--gold2); font-size: 22px; }
+.toolgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
+.toolbox { background: #0003; border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.toolbox h3 { color: var(--gold); font-size: 16px; }
+.toolbox iframe { width: 100%; height: 360px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.meta.small, .small { font-size: 12px; }
+.link-button { align-self: flex-start; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--world-border); }
+.solvers { display: flex; flex-direction: column; gap: 6px; }
+.solver { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: #ffffff06; color: var(--text); }
+.solver:hover { border-color: var(--world-accent); text-decoration: none; }
+.solver-icon { font-size: 22px; text-align: center; }
+.solver small { display: block; color: var(--muted); font-size: 12px; }
+.stuff-form { display: flex; flex-direction: column; gap: 6px; }
+.stuff-form input { font: inherit; padding: 7px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.stuff-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.stuff-list li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; background: #ffffff06; }
+.stuff-list li a { flex: 1; }
+.stuff-list small { color: var(--muted); }
+.stuff-list button { padding: 2px 6px; font-size: 11px; }
