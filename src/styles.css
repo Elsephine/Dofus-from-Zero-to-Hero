@@ -223,3 +223,42 @@ body[data-world="none"] { --world-accent: #d8ad62; --world-bright: #f0cf8c; --wo
 .res-card.done { opacity: .45; }
 .res-card.done .rname { text-decoration: line-through; }
 .sources { margin-top: auto; }
+
+/* Almanax */
+.almanax { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.alm-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.alm-head h2 { color: var(--gold2); font-size: 26px; }
+.alm-head input[type=date], .alm-head .mult input { font: inherit; padding: 5px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); color-scheme: dark; }
+.alm-today { border: 1px solid var(--world-border); border-radius: 14px; padding: 12px; background: linear-gradient(145deg, #ffffff08, transparent); display: flex; flex-direction: column; gap: 10px; }
+.alm-today.special { border-color: var(--gold); box-shadow: 0 0 18px #d8ad6233; }
+.alm-date { font: 18px Georgia, serif; color: var(--gold); text-transform: capitalize; }
+.alm-cards { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 10px; }
+.alm-card { background: #0003; border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.alm-card small { color: var(--muted); }
+.alm-card strong { font-size: 16px; color: var(--world-bright); }
+.alm-card p { margin: 0; }
+.alm-item { display: flex; align-items: center; gap: 8px; }
+.alm-item img { width: 48px; height: 48px; object-fit: contain; }
+.chip.quest { align-self: flex-start; background: #d8ad6233; color: var(--gold2); font-size: 12px; }
+.alm-split { display: grid; grid-template-columns: 320px 1fr; gap: 10px; }
+.prep-list, .alm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.prep-list li { display: flex; gap: 8px; align-items: baseline; }
+.prep-list .qty { color: var(--gold2); min-width: 28px; text-align: right; }
+.prep-list small { color: var(--muted); margin-left: auto; font-size: 11px; }
+.alm-list li { display: grid; grid-template-columns: 90px 1.3fr 1fr 80px auto auto; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 6px; font-size: 13px; }
+.alm-list li:nth-child(odd) { background: #ffffff05; }
+.alm-list li.special { background: #d8ad6218; }
+.alm-list li.done { opacity: .45; }
+.alm-list .d { color: var(--muted); text-transform: capitalize; }
+.alm-list .b { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alm-list .k { color: var(--gold2); text-align: right; }
+.alm-list label { font-size: 11px; color: var(--muted); display: flex; gap: 3px; align-items: center; cursor: pointer; }
+.row button.on { border-color: var(--world-accent); color: var(--world-bright); }
+@media (max-width: 900px) {
+  .alm-cards, .alm-split { grid-template-columns: 1fr; }
+  .alm-list li { grid-template-columns: 70px 1fr auto auto; }
+  .alm-list .b, .alm-list .k { display: none; }
+}
+.almanax .toolbox .detail-head { flex-wrap: wrap; }
+.almanax .toolbox h3 { white-space: nowrap; }
+.alm-head .mult input { width: 64px; }
