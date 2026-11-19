@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt', // appliquée par main.tsx (attend la fermeture de l'overlay)
+      registerType: 'prompt', // le rechargement de la page est géré par main.tsx (attend la fermeture de l'overlay)
       injectRegister: null, // enregistré dans main.tsx
       includeAssets: ['icons/*.png'],
       manifest: {
@@ -29,6 +29,10 @@ export default defineConfig({
         globIgnores: ['legacy/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
+        // La nouvelle version prend la main tout de suite (sinon elle peut rester bloquée « en attente » indéfiniment).
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           { urlPattern: ({ url }) => url.hostname === 'api.dofusdu.de', handler: 'StaleWhileRevalidate', options: { cacheName: 'dofusdude', expiration: { maxEntries: 600, maxAgeSeconds: 30 * 86400 } } },
           { urlPattern: ({ url }) => url.hostname.endsWith('fonts.googleapis.com') || url.hostname.endsWith('fonts.gstatic.com'), handler: 'CacheFirst', options: { cacheName: 'fonts', expiration: { maxEntries: 20, maxAgeSeconds: 365 * 86400 } } },
