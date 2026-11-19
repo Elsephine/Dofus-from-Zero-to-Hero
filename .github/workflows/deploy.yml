@@ -1,14 +1,15 @@
-# Publie le site sur GitHub Pages à chaque envoi sur main.
-# La vérification des données (scripts/validate.ts) et TypeScript passent AVANT : si elles échouent, le site en ligne n'est pas touché.
-# Réglage unique : GitHub > Settings > Pages > Source = « GitHub Actions ».
+# Publie le site : à chaque envoi sur la branche « site-react » (le code source), on vérifie les données,
+# on construit le site et on remplace le contenu de la branche « main », que GitHub Pages affiche déjà
+# (réglage « Deploy from a branch : main / root », rien à changer dans les paramètres).
+# Si la vérification échoue, le site en ligne n'est pas touché.
 name: Publier le site
 on:
-  push: { branches: [main] }
+  push: { branches: [site-react] }
   workflow_dispatch:
-permissions: { contents: read, pages: write, id-token: write }
-concurrency: { group: pages, cancel-in-progress: true }
+permissions: { contents: write }
+concurrency: { group: publish, cancel-in-progress: true }
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,12 +17,15 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        with: { path: dist }
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
-    steps:
-      - id: d
-        uses: actions/deploy-pages@v4
+      - name: Remplacer le contenu de main par le site construit
+        run: |
+          cp -r legacy dist/legacy
+          touch dist/.nojekyll
+          printf 'Site construit automatiquement depuis la branche site-react (code source). Ne pas modifier ici.\n' > dist/README.md
+          cd dist
+          git init -q -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publication du site depuis site-react ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" main

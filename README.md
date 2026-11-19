@@ -16,4 +16,4 @@ npm run build    # version à publier (dans dist/)
 ```
 
 ## Mise en ligne
-GitHub > Settings > Pages > Source : **GitHub Actions**. Chaque envoi sur `main` vérifie puis publie.
+Le code source vit sur la branche `site-react`. À chaque envoi sur cette branche, l'action « Publier le site » vérifie les données, construit le site et remplace la branche `main`, que GitHub Pages affiche (Deploy from a branch : main / root). L'ancien site reste consultable dans `legacy/`.
