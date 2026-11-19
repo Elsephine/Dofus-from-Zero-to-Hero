@@ -1,4 +1,6 @@
 // Équipe en direct : qui est en ligne, disponibilités de la semaine, répartition de la récolte, succès de donjon à plusieurs.
+import { dungeonKeys } from './data/jeu/clefs';
+import { challengeOf, planRuns } from './model/achievements';
 import { useMemo, useRef, useState } from 'react';
 import { profiles } from './model/profiles';
 import { qtyOf, teamInfo, toggle } from './model/progress';
@@ -195,6 +197,34 @@ export function dungeonFor(label: string) {
   return DJ_KEYS.find(x => x.keys.some(y => y === k || y.includes(k) || k.includes(y)))?.d;
 }
 
+/** Clé du donjon (recette) + plan des passages pour cumuler les succès restants. */
+export function DungeonExtras({ d, todo }: { d: (typeof dungeons)[number]; todo: (typeof dungeons)[number]['ach'] }) {
+  const key = dungeonKeys[d.id];
+  const runs = planRuns(todo);
+  return (
+    <div className="dj-extras">
+      {key && (
+        <details className="dj-key">
+          <summary>🗝 {key.name} <small className="meta">({key.recipe.length} ingrédients)</small></summary>
+          <ul>{key.recipe.map(([n, q]) => <li key={n}><ResIcon name={n} size={20} /> {q} × {n}</li>)}</ul>
+        </details>
+      )}
+      {runs.length > 0 && (
+        <div className="dj-plan">
+          <strong>🗺 Plan conseillé : {runs.length} passage{runs.length > 1 ? 's' : ''} pour {todo.length} succès</strong>
+          <ol>{runs.map((r, i) => (
+            <li key={i}>
+              <span className="meta small">{r.players === 1 ? '👤 seul' : r.players === 2 ? '👥 à 2' : r.players === 3 ? '👥👤 à 3' : 'à 1, 2 ou 3'}</span>
+              {r.achs.map(a => <span key={a.id} className="chip">{challengeOf(a) ?? 'Boss'} · {a.pts} pts</span>)}
+            </li>
+          ))}</ol>
+          <p className="meta small">Regroupement indicatif : en jeu, vérifie que les challenges choisis sont bien proposés ensemble.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DungeonAchievements({ profileId, isDone }: { profileId: number; isDone: IsDone }) {
   const { team } = teamInfo();
   const { open } = useGoals();
@@ -236,6 +266,7 @@ export function DungeonAchievements({ profileId, isDone }: { profileId: number; 
                 <strong>{d.name}</strong> <small>niv. {d.lvl}</small>{ours.has(d.id) && <span className="chip quest">🎯 objectif</span>}
                 <span className="meta small">{done}/{d.ach.length} pour toi</span>
               </button>
+              {isOpen && <DungeonExtras d={d} todo={d.ach.filter(a => todo(a.id))} />}
               {isOpen && (
                 <ul className="ach-list">{d.ach.filter(a => !onlyTodo || todo(a.id)).map(a => (
                   <li key={a.id} className={isDone(profileId, key(a.id)) ? 'done' : ''}>

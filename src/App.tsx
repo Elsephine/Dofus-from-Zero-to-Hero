@@ -17,6 +17,10 @@ import { watchGoals } from './model/goals';
 import { setPresencePage, watchTeamLive } from './model/teamlive';
 import { OnlineNow } from './TeamLive';
 import { Jobs } from './Jobs';
+import { Achievements, eventStatus } from './Achievements';
+import { almostDone, achKey, useAchData } from './model/achievements';
+import { dungeonFor } from './TeamLive';
+import { dungeonKeys } from './data/jeu/clefs';
 import { Almanax } from './Almanax';
 import { Team } from './Team';
 import { OverlayView, openOverlay } from './Overlay';
@@ -43,7 +47,7 @@ export function App() {
   useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); watchTeamLive(profile?.id ?? null); }, [profile?.id]);
   // Page affichée, visible par les coéquipiers (« Volrod · Dofus Cauchemar »).
   useEffect(() => {
-    const labels: Record<string, string> = { home: 'Accueil', jobs: 'Métiers', team: 'Équipe', almanax: 'Almanax', messages: 'Messages', tools: 'Outils' };
+    const labels: Record<string, string> = { home: 'Accueil', jobs: 'Métiers', team: 'Équipe', almanax: 'Almanax', messages: 'Messages', tools: 'Outils', succes: 'Succès' };
     setPresencePage(labels[view] ?? dofusInfo.find(d => d.id === view)?.name ?? 'Site');
   }, [view]);
   // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
@@ -90,8 +94,9 @@ export function App() {
       <header className="top" style={{ '--hero': `url(${import.meta.env.BASE_URL}persos/${profile.image})` } as React.CSSProperties}>
         <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
+          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages', 'succes'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic">🥚</span><span className="lbl">Dofus</span></button>
           <button className={view === 'jobs' ? 'on' : ''} title="Métiers & ressources" onClick={() => setView('jobs')}><span className="ic">⚒</span><span className="lbl">Métiers</span></button>
+          <button className={view === 'succes' ? 'on' : ''} title="Succès" onClick={() => setView('succes')}><span className="ic">🏆</span><span className="lbl">Succès</span></button>
           <button className={view === 'team' ? 'on' : ''} title="Équipe" onClick={() => setView('team')}><span className="ic">👥</span><span className="lbl">Équipe</span></button>
           <button className={view === 'almanax' ? 'on' : ''} title="Almanax" onClick={() => setView('almanax')}><span className="ic">📅</span><span className="lbl">Almanax</span></button>
           <button className={view === 'messages' ? 'on' : ''} title="Messages" onClick={() => setView('messages')}><span className="ic">💬{unread > 0 && <span className="badge">{unread}</span>}</span><span className="lbl">Messages</span></button>
@@ -109,7 +114,7 @@ export function App() {
       {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
       <Toasts />
 
-      {view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
+      {view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
         ? (
           <div className="with-rail">
             <DofusRail current={info.id} profileId={profile.id} isDone={isDone} onOpen={setView} />
@@ -152,6 +157,41 @@ function CodeDialog({ profileId, onClose, onOk }: { profileId: number; onClose: 
 }
 
 const img = (file: string | null) => (file ? `${import.meta.env.BASE_URL}dofus/${file}` : undefined);
+
+/** « Aujourd'hui » : ce qui rapporte le plus avec ce qui est déjà commencé. */
+function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
+  const d = useAchData();
+  const { team } = teamInfo();
+  const members = profiles.filter(p => p.id === profileId || team[p.id]);
+  const [hidden, setHidden] = remember<string>('fzth:v2:nextHidden', '');
+  const today = new Date().toISOString().slice(0, 10);
+  if (hidden === today) return <button className="next-show" onClick={() => setHidden('')}>💡 Voir les idées du jour</button>;
+  // Dofus le plus proche de la fin parmi ceux commencés
+  const doing = catalog.map(raw => { const v = viewFor(raw, profileId, isDone); const left = v.sections.flatMap(s => s.items).filter(i => !isDone(profileId, i.id)); return { raw, v, left }; })
+    .filter(x => x.left.length && x.left.length < x.v.itemIds.length).sort((a, b) => a.left.length - b.left.length);
+  const close = doing[0];
+  // Donjon de la prochaine quête d'un Dofus en cours
+  let dj: { name: string; left: number; key?: string; dofus: string } | null = null;
+  for (const x of doing) {
+    const it = x.left[0]; const label = it.dungeon?.name ?? it.objectives?.find(o => o.type === 'donjon')?.label;
+    const dd = label ? dungeonFor(label) : undefined;
+    if (dd) { dj = { name: dd.name, left: dd.ach.filter(a => members.some(m => !isDone(m.id, achKey(a.id)))).length, key: dungeonKeys[dd.id]?.name, dofus: x.raw.id }; break; }
+  }
+  const almost = d ? almostDone(d, profileId, isDone)[0] : undefined;
+  const ev = d ? eventStatus(d, profileId, isDone).find(x => x.days <= 30 && x.left.length) : undefined;
+  const cards: JSX.Element[] = [];
+  if (close) cards.push(<button key="dofus" className="next-card" onClick={() => onOpen(close.raw.id)}><span className="nc-ic">🥚</span><span><small>Dofus le plus proche</small><strong>{close.raw.name} : plus que {close.left.length} étape{close.left.length > 1 ? 's' : ''}</strong><em>Prochaine : {close.left[0].name}</em></span></button>);
+  if (dj) cards.push(<button key="dj" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic">⛫</span><span><small>Donjon à préparer</small><strong>{dj.name}</strong><em>{dj.left} succès à cumuler en équipe{dj.key ? ` · 🗝 ${dj.key}` : ''}</em></span></button>);
+  if (almost) cards.push(<button key="ach" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic">🏆</span><span><small>Succès presque fini</small><strong>{almost.a.n}</strong><em>{almost.done}/{almost.total} objectifs · {almost.a.p} pts</em></span></button>);
+  if (ev) cards.push(<button key="ev" className="next-card hot" onClick={() => onOpen('succes')}><span className="nc-ic">⏰</span><span><small>{ev.days === 0 ? 'C’est la période' : `Dans ~${ev.days} jours`}</small><strong>Événement {ev.e.label}</strong><em>{ev.left.length} succès · {ev.pts} pts à prendre</em></span></button>);
+  cards.push(<button key="alm" className="next-card" onClick={() => onOpen('almanax')}><span className="nc-ic">📅</span><span><small>Chaque jour</small><strong>Offrande Almanax</strong><em>Voir l’offrande et le bonus du jour</em></span></button>);
+  return (
+    <section className="next-actions">
+      <h3>💡 Aujourd’hui, je te propose <button className="link-like" onClick={() => setHidden(today)}>masquer pour aujourd’hui</button></h3>
+      <div className="next-grid">{cards}</div>
+    </section>
+  );
+}
 
 /** Bouton clair / sombre (retenu sur l'appareil). */
 function ThemeToggle() {
@@ -206,6 +246,7 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
   return (
     <main className="home panel">
       <TeamStrip profileId={profileId} isDone={isDone} />
+      <NextActions profileId={profileId} isDone={isDone} onOpen={onOpen} />
       <div className="home-head">
         <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
         <div className="row">{FILTERS.map(([k, l]) => <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l} <small>{k === 'all' ? stats.length : stats.filter(x => x.state === k).length}</small></button>)}</div>
