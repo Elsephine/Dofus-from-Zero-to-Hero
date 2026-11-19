@@ -321,11 +321,11 @@ function Needs({ dofus, profileId, isDone }: { dofus: DofusView; profileId: numb
 
 function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: number; isDone: (p: number, id: string) => boolean }) {
   const [mult, setMult] = remember<number>(`fzth:v2:mult:${profileId}:${dofus.id}`, 1);
-  const [hideOwned, setHideOwned] = remember<boolean>('fzth:v2:hideOwned', false);
+  const [showOwned, setShowOwned] = remember<boolean>('fzth:v2:showOwned', false);
   const { kamas, items } = resourceNeeds(dofus, id => isDone(profileId, id));
   const key = (name: string) => `res:${dofus.id}:${name}`;
   const owned = items.filter(r => isDone(profileId, key(r.name))).length;
-  const shown = hideOwned ? items.filter(r => !isDone(profileId, key(r.name))) : items;
+  const shown = showOwned ? items : items.filter(r => !isDone(profileId, key(r.name)));
   const m = Math.max(1, mult || 1);
   return (
     <aside className="resources panel">
@@ -337,7 +337,7 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
         <label className="mult">×<input type="number" min={1} max={99} value={mult} onChange={e => setMult(Math.min(99, Math.max(1, Number(e.target.value) || 1)))} /></label>
       </div>
       {kamas && <p className="kamas-need">Kamas à prévoir : <strong>{(kamas.qty * m).toLocaleString('fr-FR')} K</strong></p>}
-      <label className="toggle"><input type="checkbox" checked={hideOwned} onChange={e => setHideOwned(e.target.checked)} /> Masquer celles que j’ai</label>
+      {owned > 0 && <label className="toggle"><input type="checkbox" checked={showOwned} onChange={e => setShowOwned(e.target.checked)} /> Voir les ressources déjà obtenues ({owned})</label>}
       <ul className="res-list">
         {shown.map(r => {
           const have = isDone(profileId, key(r.name));
@@ -355,6 +355,7 @@ function Resources({ dofus, profileId, isDone }: { dofus: DofusView; profileId: 
           );
         })}
         {!items.length && <li className="meta">Aucune ressource pour les quêtes restantes.</li>}
+        {items.length > 0 && !shown.length && <li className="meta">🎉 Tout est réuni !</li>}
       </ul>
     </aside>
   );

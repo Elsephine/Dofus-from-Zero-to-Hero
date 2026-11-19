@@ -21,6 +21,9 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const [teamMode, setTeamModeState] = useState<boolean>(() => { try { return localStorage.getItem('fzth:v2:jobTeamMode') !== '0'; } catch { return true; } });
   const setTeamMode = (v: boolean) => { setTeamModeState(v); try { localStorage.setItem('fzth:v2:jobTeamMode', v ? '1' : '0'); } catch { /* ignore */ } };
   const [copied, setCopied] = useState('');
+  // Ressources finalisées masquées par défaut pour libérer de la place.
+  const [showDone, setShowDoneState] = useState<boolean>(() => { try { return localStorage.getItem('fzth:v2:showDoneRes') === '1'; } catch { return false; } });
+  const setShowDone = (v: boolean) => { setShowDoneState(v); try { localStorage.setItem('fzth:v2:showDoneRes', v ? '1' : '0'); } catch { /* ignore */ } };
   const setMult = (v: number) => { const n = Math.min(999, Math.max(1, Math.floor(v) || 1)); setMultState(n); try { localStorage.setItem(lsMult, String(n)); } catch { /* ignore */ } };
   const { team } = teamInfo();
   const counted = profiles.filter(p => p.id === profileId || team[p.id]); // personnages dont on connaît les quantités
@@ -30,6 +33,10 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const teamOk = (x: { name: string; qty: number }) => teamHave(key(x.name)) >= x.qty * factor;
   const done = teamMode ? ALL.filter(teamOk).length : ALL.filter(x => isDone(profileId, key(x.name))).length;
   const pct = Math.round((done / Math.max(1, ALL.length)) * 100);
+  const finished = (name: string, qty: number) => { const k = key(name);
+    return teamMode ? teamHave(k) >= qty * factor : isDone(profileId, k) || (qtyOf(profileId, k) ?? 0) >= qty * mult; };
+  const doneToggle = (n: number) => n > 0 && (
+    <label className="toggle show-done"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Voir les ressources déjà obtenues ({n})</label>);
   const job = jobs.find(j => j.name === tab);
   const fmt = (q: number) => (q * mult).toLocaleString('fr-FR');
 
@@ -136,7 +143,9 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
             </div>
           </div>
           <span className="bar big"><span style={{ width: `${pct}%` }} /></span>
-          <div className="res-grid">{ALL.map(x => row(x.name, x.qty, x.jobs.join(', ')))}</div>
+          {doneToggle(ALL.filter(x => finished(x.name, x.qty)).length)}
+          <div className="res-grid">{ALL.filter(x => showDone || !finished(x.name, x.qty)).map(x => row(x.name, x.qty, x.jobs.join(', ')))}</div>
+          {!showDone && ALL.every(x => finished(x.name, x.qty)) && <p className="done-all">🎉 Toutes les ressources sont réunies !</p>}
         </section>
       ) : (
         <section>
@@ -144,7 +153,9 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
             <div><h3>{job.name} · niveau {job.target}</h3><p className="meta">{job.items.length} ressources distinctes pour ce métier</p></div>
           </div>
           <p className="notice">{job.note}</p>
-          <div className="res-grid">{job.items.map(([n, q]) => row(n, q))}</div>
+          {doneToggle(job.items.filter(([n, q]) => finished(n, q)).length)}
+          <div className="res-grid">{job.items.filter(([n, q]) => showDone || !finished(n, q)).map(([n, q]) => row(n, q))}</div>
+          {!showDone && job.items.every(([n, q]) => finished(n, q)) && <p className="done-all">🎉 Tout est réuni pour ce métier !</p>}
         </section>
       )}
 
