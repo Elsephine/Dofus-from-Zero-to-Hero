@@ -47,7 +47,7 @@ export function GiftPopup({ profileId }: { profileId: number }) {
         <p className="meta">{copied ? '✓ Code copié' : 'Touche le code pour le copier.'}</p>
         {g.reward && <p><strong>Récompense :</strong> {g.reward}</p>}
         {g.expires && <p className="warn">⏳ Valable jusqu’au {fmtDate(g.expires)}</p>}
-        <p className="meta small">Ajouté par {who?.name ?? 'un coéquipier'}. À saisir en jeu (touche R) ou sur la page des codes cadeaux Ankama.</p>
+        <p className="meta small">{g.added_by < 0 ? 'Trouvé automatiquement par la veille de Claude.' : `Ajouté par ${who?.name ?? 'un coéquipier'}.`} À saisir en jeu (touche R) ou sur la page des codes cadeaux Ankama.</p>
         <div className="row gift-actions">
           <a className="link-button" href={CODES_URL} target="_blank" rel="noreferrer">Ouvrir la page des codes ↗</a>
           <button className="primary" onClick={() => { toggle(profileId, giftId(g.code), true); close(); }}>✓ Je l’ai utilisé</button>
@@ -73,14 +73,14 @@ export function GiftCodes({ profileId }: { profileId: number }) {
   return (
     <section className="toolbox gifts">
       <h3>🎁 Codes cadeaux</h3>
-      <p className="meta">Un code trouvé (live, Twitch, réseaux…) ? Ajoute-le : les deux autres reçoivent une pop-up à leur prochaine ouverture du site.</p>
+      <p className="meta">Claude vérifie chaque jour les nouveaux codes et les ajoute ici (🤖) : vous recevez une pop-up. Vous pouvez aussi en ajouter un vous-mêmes.</p>
       {gifts.length ? <ul className="gift-list">{gifts.map(g => {
         const used = isDone(profileId, giftId(g.code));
         return (
           <li key={g.id} className={used ? 'done' : ''}>
             <label title="Je l’ai utilisé"><input type="checkbox" checked={used} onChange={() => toggle(profileId, giftId(g.code))} /></label>
             <button className="gift-code small" onClick={async () => { if (await copy(g.code)) { setCopied(g.id); setTimeout(() => setCopied(''), 1500); } }} title="Copier">{copied === g.id ? '✓ copié' : g.code}</button>
-            <span>{g.reward || <em className="meta">récompense non précisée</em>}{g.expires && <small className="meta"> · jusqu’au {fmtDate(g.expires)}</small>}</span>
+            <span>{g.added_by < 0 && <span title="Trouvé par la veille automatique">🤖 </span>}{g.reward || <em className="meta">récompense non précisée</em>}{g.expires && <small className="meta"> · jusqu’au {fmtDate(g.expires)}</small>}</span>
             <span className="who">{profiles.filter(p => isDone(p.id, giftId(g.code))).map(p => <img key={p.id} src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt={p.name} title={`${p.name} l’a utilisé`} className="ok" />)}</span>
             {g.added_by === profileId && <button className="link-like" onClick={async () => { await deleteGift(profileId, g.id).catch(() => {}); void reload(); }} title="Retirer">✕</button>}
           </li>
