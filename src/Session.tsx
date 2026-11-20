@@ -11,7 +11,8 @@ import { entryAt, listDone, teamInfo, toggle } from './model/progress';
 import { post } from './model/messages';
 import { pushToasts } from './model/notifications';
 import { createGoal } from './model/goals';
-import { achKey, objDone, useAchData } from './model/achievements';
+import { achKey, objDone, QCOUNT, questCount, questCountTarget, useAchData } from './model/achievements';
+import { qtyOf } from './model/progress';
 import { useProgress } from './model/progress';
 import { useRef } from 'react';
 import { burst } from './model/celebrate';
@@ -271,6 +272,9 @@ export function AutoAchievements({ profileId }: { profileId: number }) {
     const t = setTimeout(() => {
       const complete = new Set<number>();
       for (const a of d.list) if (a.o && a.o.every((_, i) => objDone(d, a, i, profileId, isDone))) complete.add(a.id);
+      // « Terminer N quêtes » : d'après le compteur de quêtes.
+      const qc = questCount(profileId, qtyOf(profileId, QCOUNT), entryAt(profileId, QCOUNT), listDone(profileId), id => entryAt(profileId, id));
+      if (qc) for (const a of d.list) { const n = questCountTarget(a); if (n && qc.total >= n) complete.add(a.id); }
       // Seulement ceux qui viennent de se compléter (un succès décoché à la main n'est pas recoché tant que rien ne change).
       const fresh = [...complete].filter(id => !prev.current?.has(id) && !isDone(profileId, achKey(id)));
       prev.current = complete;

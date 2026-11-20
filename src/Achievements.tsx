@@ -6,11 +6,11 @@ import { bossByName } from './data/jeu/boss';
 import { BossImg } from './ui/BossImg';
 import type { Ach } from './data/jeu/succes';
 import { GAME_VERSION } from './data/jeu/donjons';
-import { achKey, achProgress, almostDone, eventStatus, norm, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
+import { achKey, achProgress, almostDone, eventStatus, norm, QCOUNT, questCount, questCountTarget, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
 import { catalog } from './model/catalog';
 import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
-import { teamInfo, toggle } from './model/progress';
+import { entryAt, listDone, qtyOf, setQty, teamInfo, toggle } from './model/progress';
 import { DungeonAchievements } from './TeamLive';
 
 const TABS: [string, string, typeof ScrollText][] = [['all', 'Tous les succès', ScrollText], ['almost', 'Presque finis', Hourglass], ['dj', 'Donjons', Castle], ['alerts', 'À ne pas rater', AlarmClock]];
@@ -60,6 +60,8 @@ export function AchRow({ d, a, profileId, isDone, showCat }: { d: AchData; a: Ac
           <strong>{a.n}</strong>
           <small>{showCat && <em>{d.top(a.c).name}{d.catOf.get(a.c)!.parent ? ` › ${d.catOf.get(a.c)!.name}` : ''} · </em>}{a.d}</small>
         </div>
+        {(() => { const n = questCountTarget(a); const qc = n && questCount(profileId, qtyOf(profileId, QCOUNT), entryAt(profileId, QCOUNT), listDone(profileId), id => entryAt(profileId, id));
+          return n && qc && !pr.complete ? <span className="ach-prog" title="Compteur de quêtes"><span>{Math.min(qc.total, n)}/{n}</span><i><b style={{ width: `${Math.min(100, (qc.total / n) * 100)}%` }} /></i></span> : null; })()}
         {a.o && (
           <button type="button" className="ach-prog" onClick={() => setOpen(!open)} title="Voir les objectifs">
             <span>{pr.done}/{pr.total}</span><i><b style={{ width: `${(pr.done / pr.total) * 100}%` }} /></i>{open ? '▴' : '▾'}
@@ -115,6 +117,7 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
           <input className="dj-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Chercher un succès (nom, boss, zone…)" />
           <label className="toggle"><input type="checkbox" checked={!showDone} onChange={e => setShowDone(!e.target.checked)} /> Masquer les succès obtenus{hidden > 0 ? ` (${hidden})` : ''}</label>
         </div>
+        {groups.some(g => g.items.some(a => questCountTarget(a))) && <QuestCounter profileId={profileId} />}
         {groups.length > 1 && (
           <div className="ach-fold-all">
             <button className="link-like" onClick={() => setClosed(groups.map(g => g.id))}>Tout replier</button>
@@ -158,6 +161,27 @@ function byBoss(items: Ach[]) {
     if (idx.has(k)) out[idx.get(k)!].items.push(a); else { idx.set(k, out.length); out.push({ key: k, boss: b, items: [a] }); }
   }
   return out;
+}
+
+/** Saisie du nombre de quêtes terminées en jeu (une fois), puis le site ajoute ce qu'on coche. */
+function QuestCounter({ profileId }: { profileId: number }) {
+  const base = qtyOf(profileId, QCOUNT);
+  const qc = questCount(profileId, base, entryAt(profileId, QCOUNT), listDone(profileId), id => entryAt(profileId, id));
+  const [val, setVal] = useState(''); const [edit, setEdit] = useState(base === undefined);
+  const save = () => { const n = Number(val); if (n >= 0) { setQty(profileId, QCOUNT, n, 0); setEdit(false); } };
+  return (
+    <div className="qcounter">
+      <BookOpen size={18} />
+      {edit ? <>
+        <span>Combien de quêtes as-tu terminées en jeu ? <small>Ouvre Succès › Quêtes en jeu : la barre de « En quête de… » donne le nombre.</small></span>
+        <input type="number" min={0} value={val} onChange={e => setVal(e.target.value)} placeholder="ex. 243" onKeyDown={e => e.key === 'Enter' && save()} />
+        <button className="primary" onClick={save}>Enregistrer</button>
+      </> : qc && <>
+        <span><strong>{qc.total.toLocaleString('fr-FR')} quêtes terminées</strong> <small>{qc.base} en jeu au départ + {qc.added} cochée{qc.added > 1 ? 's' : ''} sur le site depuis. Les succès « En quête de… » se valident tout seuls.</small></span>
+        <button onClick={() => { setVal(String(qc.total)); setEdit(true); }}>Corriger</button>
+      </>}
+    </div>
+  );
 }
 
 function Almost({ d, profileId, isDone }: { d: AchData; profileId: number; isDone: IsDone }) {

@@ -1434,3 +1434,8 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .ov-dj-achs small { color: var(--gold); font-size: 10px; margin-left: auto; padding-right: 4px; }
 .ov-dj-achs img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; }
 .ov-dj-achs img.no { filter: grayscale(1); opacity: .35; } .ov-dj-achs img.ok { box-shadow: 0 0 0 2px var(--ok2); }
+
+.qcounter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: var(--world-glow); border: 1px solid var(--world-border); font-size: 14px; }
+.qcounter > svg { color: var(--world-accent); flex: none; }
+.qcounter > span { flex: 1; min-width: 220px; display: flex; flex-direction: column; } .qcounter small { color: var(--muted); font-size: 12px; }
+.qcounter input { width: 110px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }

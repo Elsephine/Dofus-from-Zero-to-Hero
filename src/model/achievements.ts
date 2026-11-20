@@ -149,3 +149,20 @@ export function eventStatus(d: AchData, profileId: number, isDone: IsDone) {
   }).sort((a, b) => a.days - b.days);
 }
 
+
+// ---------- Compteur de quêtes (« Terminer N quêtes ») ----------
+// Le site ne voit pas le jeu : on part du nombre affiché en jeu (saisi une fois), puis on ajoute
+// chaque quête cochée sur le site après cette saisie (quêtes des Dofus et d'alignement, chacune une seule fois).
+export const QCOUNT = 'qcount:base';
+export const questCountTarget = (a: Ach) => { const m = /^Terminer (\d+) quêtes?\.?$/.exec(a.d); return m ? Number(m[1]) : null; };
+let questIdSet: Set<string> | null = null;
+const siteQuestIds = () => {
+  if (!questIdSet) { questIdSet = new Set(); for (const raw of catalog) for (const sec of raw.sections) for (const i of sec.items) if (i.kind !== 'achievement') questIdSet.add(i.id); }
+  return questIdSet;
+};
+export function questCount(p: number, base: number | undefined, baseAt: string | undefined, done: string[], at: (id: string) => string | undefined) {
+  if (base === undefined) return null;
+  const ids = siteQuestIds();
+  const added = done.filter(id => (ids.has(id) || id.startsWith('align:')) && (at(id) ?? '') > (baseAt ?? '')).length;
+  return { base, added, total: base + added };
+}
