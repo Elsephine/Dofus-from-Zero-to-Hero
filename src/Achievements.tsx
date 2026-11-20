@@ -5,7 +5,7 @@ import { burst } from './model/celebrate';
 import { bossByName } from './data/jeu/boss';
 import { BossImg } from './ui/BossImg';
 import type { Ach } from './data/jeu/succes';
-import { GAME_VERSION } from './data/jeu/donjons';
+import { GAME_VERSION, dungeons } from './data/jeu/donjons';
 import { achKey, achProgress, almostDone, eventStatus, norm, QCOUNT, questCount, questCountTarget, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
 import { catalog } from './model/catalog';
 import { viewFor } from './model/choices';
@@ -149,12 +149,23 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
 
 /** Boss d'un succès de donjon (« Vaincre le Bouftou Royal dans son donjon… » ou méta-succès « Bouftou Royal (Duo) »…). */
 const bossOf = (a: Ach): string | null => {
-  const m = /^Vaincre (?:le |la |les |l'|l’)?(.+?) dans son donjon/i.exec(a.d); if (m) return m[1];
+  const m = /^Vaincre (?:le |la |les |l'|l’)?(.+?)(?: en équipe)? dans son donjon/i.exec(a.d); if (m) return m[1];
   const fromObj = (a.o ?? []).map(o => /^(.+?) \(/.exec(o)?.[1]).filter(Boolean) as string[];
   return fromObj.length && fromObj.every(b => b === fromObj[0]) ? fromObj[0] : null;
 };
-/** Regroupe les succès d'un même boss à la place du premier, dans l'ordre d'origine. */
+/** Niveau du donjon de chaque boss (pour ranger les succès de donjon par niveau). */
+const bossLvl = new Map<string, number>();
+for (const dj of dungeons) {
+  const b = dj.ach[0]?.desc.match(/Vaincre (?:le |la |les |l'|l’)?(.+?) dans son donjon/i)?.[1];
+  if (b && !bossLvl.has(norm(b))) bossLvl.set(norm(b), dj.lvl);
+}
+/** Regroupe les succès d'un même boss, puis range les boss par niveau de donjon (les autres succès gardent leur place relative, après). */
 function byBoss(items: Ach[]) {
+  const out = byBossRaw(items);
+  const lv = (c: { boss: string | null }): number => (c.boss ? bossLvl.get(norm(c.boss)) : undefined) ?? 1e9;
+  return out.map((c, i) => ({ c, i })).sort((x, y) => lv(x.c) - lv(y.c) || x.i - y.i).map(x => x.c);
+}
+function byBossRaw(items: Ach[]) {
   const out: { key: string; boss: string | null; items: Ach[] }[] = []; const idx = new Map<string, number>();
   for (const a of items) {
     const b = bossOf(a); const k = b ? 'b:' + norm(b) : 'a:' + a.id;
