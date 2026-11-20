@@ -143,6 +143,9 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
 function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: number; isDone: (p: number, id: string) => boolean; status: string; onMode: (m: Mode) => void }) {
   const [dofusId, setDofusId] = useState(() => { try { return localStorage.getItem(LS) ?? catalog[0].id; } catch { return catalog[0].id; } });
   const [count, setCount] = useState(6);
+  // Mode focus partagé avec le site : seulement la quête en cours et les 2 suivantes.
+  const [focus, setFocusState] = useState(() => { try { return localStorage.getItem('fzth:v2:focus') === 'true'; } catch { return false; } });
+  const setFocus = (v: boolean) => { setFocusState(v); try { localStorage.setItem('fzth:v2:focus', String(v)); } catch { /* ignore */ } };
   const pick = (id: string) => { setDofusId(id); try { localStorage.setItem(LS, id); } catch { /* ignore */ } };
   const profile = profiles.find(p => p.id === profileId)!;
   const raw = catalog.find(c => c.id === dofusId) ?? catalog[0];
@@ -160,7 +163,7 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
   const mates = profiles.filter(p => p.id !== profileId && team[p.id]);
   const [behindOnly, setBehindOnly] = useState(false);
   const seen = new Set<string>();
-  const next = all.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return !isDone(profileId, i.id) && (!behindOnly || mates.some(m => isDone(m.id, i.id))); }).slice(0, count);
+  const next = all.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return !isDone(profileId, i.id) && (!behindOnly || mates.some(m => isDone(m.id, i.id))); }).slice(0, focus ? 3 : count);
   const behindCount = [...new Set(all.filter(i => !isDone(profileId, i.id) && mates.some(m => isDone(m.id, i.id))).map(i => i.id))].length;
   const last = [...all].reverse().find(i => isDone(profileId, i.id));
 
@@ -235,18 +238,18 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
             </span>); })}
         </div>
       </section>
-      <nav className="ov-eggs">
+      {!focus && <nav className="ov-eggs">
         {eggs.map(({ d, n, total }) => (
           <button key={d.id} className={`ov-egg${d.id === raw.id ? ' on' : ''}${n === total ? ' complete' : ''}`} onClick={() => pick(d.id)} title={`${d.name} · ${n}/${total}`}>
             {d.image && <img src={abs('dofus/' + d.image)} alt="" />}
             {n > 0 && n < total && <i style={{ width: `${(n / total) * 100}%` }} />}
           </button>
         ))}
-      </nav>
-      <div className="ov-groupby">
+      </nav>}
+      {!focus && <div className="ov-groupby">
         <button className={groupBy === 'succes' ? 'on' : ''} onClick={() => setGroupBy('succes')}>🏆 Par succès</button>
         <button className={groupBy === 'etapes' ? 'on' : ''} onClick={() => setGroupBy('etapes')}>📋 Par étape</button>
-      </div>
+      </div>}
       {toValidate.map(g => (
         <div key={g.id} className="ov-validate">🏆 « {g.title} » est complet ! <button onClick={() => toggle(profileId, achKey(g.ach!.id), true)}>Cocher le succès</button></div>
       ))}
@@ -281,7 +284,8 @@ function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: numbe
       </ul>
       <footer>
         {last && <button onClick={() => toggle(profileId, last.id, false)} title={`Décocher « ${last.name} »`}>↶ Annuler</button>}
-        <button onClick={() => setCount(count === 6 ? 15 : 6)}>{count === 6 ? '＋ Plus' : '－ Moins'}</button>
+        <button className={focus ? 'on' : ''} onClick={() => setFocus(!focus)} title="Seulement la quête en cours et les 2 suivantes">🎯 {focus ? 'Tout voir' : 'Focus'}</button>
+        {!focus && <button onClick={() => setCount(count === 6 ? 15 : 6)}>{count === 6 ? '＋ Plus' : '－ Moins'}</button>}
         <a className="link-button" href={HUNT} target="_blank" rel="noreferrer">🧭 Chasse</a>
       </footer>
     </div>

@@ -271,3 +271,4 @@ export interface Report { id: string; profile_id: number; item_id: string; label
 export const addReport = (p: number, item: string, label: string, body: string) => rpc('fzth_report_add', { p_profile: p, p_code: codes[p], p_item: item, p_label: label, p_body: body });
 export const listReports = async (p: number) => (await rpc<Report[]>('fzth_report_list', { p_profile: p, p_code: codes[p] })) ?? [];
 export const resolveReport = (p: number, id: string, resolved: boolean) => rpc('fzth_report_resolve', { p_profile: p, p_code: codes[p], p_id: id, p_resolved: resolved });
+export const entryAt = (profile: number, id: string) => entries.get(key(profile, id))?.at;

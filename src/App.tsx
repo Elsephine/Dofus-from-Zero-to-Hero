@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight, Target } from 'lucide-react';
 import { repeatables } from './data/jeu/quetes';
 import { favKey, repKey, repTodo } from './model/repeat';
+import { isDone as isDoneP } from './model/progress';
 import { cachedRange, fetchRange, parisToday } from './model/almanax';
 import { tagIcon } from './ui/QuestTags';
 import { GROUP_KEY, groupQuests, type GroupBy, type QuestGroup } from './model/questGroups';
@@ -28,6 +29,7 @@ import { setPresencePage, watchTeamLive } from './model/teamlive';
 import { OnlineNow } from './Presence';
 const Jobs = lazy(() => import('./Jobs').then(m => ({ default: m.Jobs })));
 import { CatchUp } from './CatchUp';
+import { CallButton, LastNote, NowCard, Roulette, SessionCard, SessionChip, SessionRecap, SessionWatcher } from './Session';
 const Quests = lazy(() => import('./Quests').then(m => ({ default: m.Quests })));
 const Achievements = lazy(() => import('./Achievements').then(m => ({ default: m.Achievements })));
 import { almostDone, achKey, achsForQuest, eventStatus, useAchData } from './model/achievements';
@@ -150,6 +152,7 @@ export function App() {
         </nav>
         <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
         <OnlineNow profileId={profile.id} />
+        <SessionChip profileId={profile.id} />
         <Clock />
         <ThemeToggle />
         <Journal profileId={profile.id} />
@@ -162,6 +165,8 @@ export function App() {
       {view !== 'team/goals' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team/goals')} />}
       <Toasts />
       <TrophyModal />
+      <SessionRecap isDone={isDone} />
+      <SessionWatcher profileId={profile.id} />
       <ReportDialog profileId={profile.id} />
       <ResetRequests profileId={profile.id} />
 
@@ -488,7 +493,11 @@ function Today({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: n
   const offered = alm ? isDone(profileId, `alm-done:${alm.date}`) : false;
   return (
     <main className="today panel">
-      <TeamStrip profileId={profileId} isDone={isDone} />
+      <LastNote profileId={profileId} />
+      <div className="today-top">
+        <NowCard profileId={profileId} isDone={isDone} onOpen={onOpen} />
+        <SessionCard profileId={profileId} isDone={isDone} />
+      </div>
       <div className="today-grid">
         <section className="t-card">
           <h3><Egg size={17} /> Reprendre</h3>
@@ -532,7 +541,14 @@ function Today({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: n
           <button className="link-like t-more" onClick={() => onOpen('almanax')}>Calendrier Almanax →</button>
         </section>
       </div>
-      <NextActions profileId={profileId} isDone={isDone} onOpen={onOpen} />
+      <div className="today-team">
+        <TeamStrip profileId={profileId} isDone={isDone} />
+        <CallButton profileId={profileId} />
+      </div>
+      <div className="today-grid two">
+        <Roulette profileId={profileId} isDone={isDone} onOpen={onOpen} />
+        <NextActions profileId={profileId} isDone={isDone} onOpen={onOpen} />
+      </div>
       <CatchUp profileId={profileId} isDone={isDone} onOpenDofus={name => { const c = catalog.find(x => x.name === name); if (c) onOpen(c.id); }} />
     </main>
   );
@@ -591,6 +607,7 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
   const ask = (k: 'all' | 'reset') => { if (confirm === k) bulk(k === 'all'); else { setConfirm(k); setTimeout(() => setConfirm(c => (c === k ? '' : c)), 4000); } };
   // Regroupement des quêtes : par succès (comme Tougli) ou par étape du guide.
   const [groupBy, setGroupBy] = remember<GroupBy>(GROUP_KEY, 'succes');
+  const [focus, setFocus] = remember<boolean>('fzth:v2:focus', false);
   const achD = useAchData();
   type Group = QuestGroup;
   const groups: Group[] = dofus ? groupQuests(dofus.sections, groupBy, achD) : [];
@@ -626,7 +643,21 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
             {info.effect && <p className="effect">{info.effect}</p>}
           </div>
         </header>
-        {dofus ? <>
+        {dofus && focus ? (() => {
+          const seen = new Set<string>();
+          const nx = groups.flatMap(g => g.items).filter(i => !isDone(profileId, i.id) && !seen.has(i.id) && seen.add(i.id)).slice(0, 3);
+          return (
+            <div className="focus-mode">
+              <div className="focus-head">
+                <span><Target size={18} /> Mode focus <small>{done}/{total} · {pct} %</small></span>
+                <button onClick={() => setFocus(false)}>Tout afficher</button>
+              </div>
+              {nx.length ? <ul className="dp-quests focus-list">{nx.map((i, n) => <QuestRow key={i.id} item={i} done={false} next={n === 0} profileId={profileId} onToggle={() => toggle(profileId, i.id)} />)}</ul>
+                : <p className="done-all">🎉 Plus rien à faire sur ce Dofus !</p>}
+              <p className="meta small center">Seulement la quête en cours et les 2 suivantes. Les autres réapparaissent au fur et à mesure.</p>
+            </div>
+          );
+        })() : dofus ? <>
           <div className="dp-stats">
             <div className="dp-ring" style={{ '--p': pct } as React.CSSProperties}>
               <strong>{pct}%</strong><span>Complété</span><b>{done}/{total}</b><small>Objectifs</small>
@@ -640,6 +671,7 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
           <div className="dp-actions">
             <button className="ok-btn" onClick={() => ask('all')}><Check size={15} /> {confirm === 'all' ? 'Confirmer ?' : 'Tout valider'}</button>
             <button className="danger-btn" onClick={() => ask('reset')}><RotateCcw size={15} /> {confirm === 'reset' ? 'Confirmer ?' : 'Réinitialiser'}</button>
+            <button className="focus-btn" onClick={() => setFocus(true)} title="N’afficher que la quête en cours et les 2 suivantes"><Target size={15} /> Mode focus</button>
             <span className="grow" />
             <span className="seg" role="group" aria-label="Ranger les quêtes">
               <button className={groupBy === 'succes' ? 'on' : ''} onClick={() => setGroupBy('succes')}><Trophy size={14} /> Par succès</button>
@@ -685,7 +717,7 @@ function DofusPage({ info, raw, profileId, hideDone, setHideDone, isDone, onBack
                     </button>
                   )}
                   {!isClosed && (list.length ? (
-                    <ul className="dp-quests">{list.map((i, n) => <QuestRow key={i.id} item={i} done={isDone(profileId, i.id)} grouped={!!i.group && list[n - 1]?.group === i.group} next={next?.id === i.id}
+                    <ul className="dp-quests">{list.map((i, n) => <QuestRow key={i.id} item={i} done={isDone(profileId, i.id)} grouped={!!i.group && list[n - 1]?.group === i.group} next={next?.id === i.id} profileId={profileId}
                       onToggle={() => toggle(profileId, i.id)} />)}</ul>
                   ) : <p className="meta center">✓ Tout est fait dans cette partie.</p>)}
                 </div>
@@ -989,8 +1021,17 @@ function SyncBadge({ status, lastSync, pending }: { status: SyncStatus; lastSync
   return <span className={`sync ${status}`} title={txt[status]}>●<span className="sync-txt"> {txt[status]}</span></span>;
 }
 
-export function QuestRow({ item, done, grouped, next, onToggle }: { item: ItemView; done: boolean; grouped?: boolean; next?: boolean; onToggle: () => void }) {
+const STEP_TYPES = /^(combat|bashing|donjon|songe|dimension|anomalie|dalles|chasse)/;
+export function QuestRow({ item, done, grouped, next, onToggle, profileId }: { item: ItemView; done: boolean; grouped?: boolean; next?: boolean; onToggle: () => void; profileId?: number }) {
   const objs = (item.objectives ?? []).filter(o => !(o.type === 'donjon' && item.dungeon?.name));
+  // Étapes découpées : une quête « ×5 combats » se coche combat par combat (la quête se valide à la dernière étape).
+  const steps = profileId === undefined || done ? [] : objs.map((o, k) => ({ o, k })).filter(({ o }) => o.count && o.count >= 2 && o.count <= 12 && STEP_TYPES.test(o.type));
+  const stepKey = (k: number, n: number) => `step:${item.id}:${k}:${n}`;
+  const allSteps = steps.flatMap(({ o, k }) => Array.from({ length: o.count! }, (_, n) => stepKey(k, n)));
+  const tickStep = (sk: string, e: React.MouseEvent | React.ChangeEvent) => {
+    const nowDone = !isDoneP(profileId!, sk); toggle(profileId!, sk);
+    if (nowDone && allSteps.every(x => x === sk || isDoneP(profileId!, x))) { burst(e.currentTarget as Element); onToggle(); }
+  };
   const sub = [item.tag, ...(item.notes ?? [])].filter(Boolean) as string[];
   return (
     <li className={`quest${done ? ' done' : ''}${next ? ' next' : ''}${item.group ? ' in-group' : ''}${grouped ? ' group-cont' : ''}`}>
@@ -1019,6 +1060,19 @@ export function QuestRow({ item, done, grouped, next, onToggle }: { item: ItemVi
         </span>
         <ReportButton id={item.id} label={item.name} />
       </label>
+      {steps.length > 0 && (
+        <div className="q-steps">{steps.map(({ o, k }) => {
+          const I = tagIcon(o.type);
+          return (
+            <span key={k} className="q-step-group" title={iconInfo(o.type).label}>
+              <I size={13} />
+              {Array.from({ length: o.count! }, (_, n) => { const sk = stepKey(k, n); const d = isDoneP(profileId!, sk); return (
+                <button key={n} type="button" className={`q-step${d ? ' on' : ''}`} onClick={e => tickStep(sk, e)} aria-label={`${iconInfo(o.type).label} ${n + 1} sur ${o.count}`}>{d ? '✓' : n + 1}</button>
+              ); })}
+            </span>
+          );
+        })}</div>
+      )}
     </li>
   );
 }
