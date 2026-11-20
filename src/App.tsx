@@ -1,6 +1,6 @@
 import { GiftPopup } from './Gifts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight, Target } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, Shirt, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight, Target } from 'lucide-react';
 import { repeatables } from './data/jeu/quetes';
 import { favKey, repKey, repTodo } from './model/repeat';
 import { isDone as isDoneP } from './model/progress';
@@ -55,7 +55,7 @@ const LEGACY: Record<string, string> = { home: 'today', team: 'team/ensemble', m
 const normView = (v: string) => LEGACY[v] ?? v;
 const fromHash = () => (location.hash.startsWith('#/') ? decodeURIComponent(location.hash.slice(2)) : null);
 /** Section du menu à laquelle appartient une page (une page de Dofus est rangée dans « Quêtes », comme en jeu). */
-export const sectionOf = (v: string) => v === 'today' || v === 'almanax' ? 'today' : v.startsWith('team') ? 'team' : ['succes', 'jobs', 'tools'].includes(v) ? v : v === 'stuffs' ? 'tools' : 'quetes';
+export const sectionOf = (v: string) => v === 'today' || v === 'almanax' ? 'today' : v.startsWith('team') ? 'team' : ['succes', 'jobs', 'tools', 'stuffs'].includes(v) ? v : 'quetes';
 function useRoute(): [string, (v: string) => void] {
   const [view, setState] = useState(() => {
     const h = fromHash(); if (h) return normView(h);
@@ -147,7 +147,8 @@ export function App() {
             ['succes', 'succes', 'Succès', 'Succès du jeu', <Trophy key="i" />, 0],
             ['jobs', 'jobs', 'Métiers', 'Métiers & ressources', <Hammer key="i" />, 0],
             ['team', view.startsWith('team') ? view : 'team/ensemble', 'Équipe', 'Le groupe : jouer ensemble, messages, objectifs…', <Users key="i" />, unread],
-            ['tools', 'tools', 'Outils', 'Chasse au trésor, solveurs, stuffs', <Wrench key="i" />, 0],
+            ['stuffs', 'stuffs', 'Stuffs', 'Galerie des stuffs DofusBook', <Shirt key="i" />, 0],
+            ['tools', 'tools', 'Outils', 'Chasse au trésor, solveurs, codes cadeaux', <Wrench key="i" />, 0],
           ] as [string, string, string, string, JSX.Element, number][]).map(([sec, target, label, title, icon, badge]) => (
             <button key={sec} className={sectionOf(view) === sec ? 'on' : ''} title={title} onClick={() => setView(sectionOf(view) === sec && sec !== 'today' ? (sec === 'quetes' ? 'quetes/dofus' : sec === 'team' ? 'team/ensemble' : sec) : target)}>
               <span className="ic">{icon}{badge > 0 && <span className="badge">{badge}</span>}</span><span className="lbl">{label}</span>
