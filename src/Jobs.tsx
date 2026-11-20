@@ -56,6 +56,24 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
     for (const x of ALL) toggle(profileId, key(x.name), false);
     setConfirmReset(false);
   };
+  // Palier coché = crafts faits : les ressources utilisées sont retirées de « j'ai » (et remises si on décoche).
+  const tickCraft = (id: string, wasDone: boolean, n: number, ing: [string, number][]) => {
+    const lsK = `fzth:v2:craftUsed:${profileId}:${id}`;
+    if (!wasDone) {
+      const used: Record<string, number> = {};
+      for (const [name, q] of ing) {
+        const k = key(name); const have = qtyOf(profileId, k); if (have === undefined) continue;
+        const take = Math.min(have, q * n); if (!take) continue;
+        used[k] = take; setQty(profileId, k, have - take, Math.max(1, ((TOTAL.get(k) ?? 0) - q * n) * (teamMode ? 1 : mult)));
+      }
+      try { localStorage.setItem(lsK, JSON.stringify(used)); } catch { /* ignore */ }
+    } else {
+      let used: Record<string, number> = {}; try { used = JSON.parse(localStorage.getItem(lsK) ?? '{}'); } catch { /* ignore */ }
+      for (const [k, take] of Object.entries(used)) setQty(profileId, k, (qtyOf(profileId, k) ?? 0) + take, Math.max(1, (TOTAL.get(k) ?? 0) * (teamMode ? 1 : mult)));
+      try { localStorage.removeItem(lsK); } catch { /* ignore */ }
+    }
+    toggle(profileId, id);
+  };
   const me = profiles.find(p => p.id === profileId)!;
   const mates = profiles.filter(p => p.id !== profileId && team[p.id]);
   // need = besoin affiché (métier ou total) × multiplicateur ; « réunie » se calcule sur le besoin total de la ressource.
@@ -167,7 +185,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
                 <summary>🔨 Crafts à faire jusqu’au niveau {jobLevel(job)} ({list.filter(x => isDone(profileId, craftId(job.name, x.i))).length}/{list.length} paliers)</summary>
                 <ul>{list.map(({ c: [lv, item, n, ing], i }) => {
                   const id = craftId(job.name, i); const ok = isDone(profileId, id);
-                  return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => toggle(profileId, id)} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}{ing?.length ? <small className="ing"> · {ing.map(([a, q]) => `${q * n} ${a}`).join(', ')}</small> : null}</span></label></li>;
+                  return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => tickCraft(id, ok, n, ing ?? [])} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}{ing?.length ? <small className="ing"> · {ing.map(([a, q]) => `${q * n} ${a}`).join(', ')}</small> : null}</span></label></li>;
                 })}</ul>
               </details>
             );
