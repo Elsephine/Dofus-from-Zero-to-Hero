@@ -47,7 +47,22 @@ const dbQuest = new Map<string, string>(), dbAch = new Map<string, string>();
 for (const q of Object.values(db.quests)) dbQuest.set(key(q.name), q.id);
 for (const a of Object.values(db.achievements)) dbAch.set(key(a.name), a.id);
 
+// Une même quête (même nom) garde le même identifiant dans tous les Dofus : la cocher une fois la coche partout.
+const canonical = new Map<string, string>();
+/** Anciens identifiants d'une quête → identifiant commun (pour reprendre les coches déjà faites). */
+export const idAliases = new Map<string, string>();
+const unify = (_kind: string, name: string, id: string) => {
+  const k = key(name).replace(/[^a-z0-9]/g, ''); const c = canonical.get(k);
+  if (!c) { canonical.set(k, id); return id; }
+  if (c !== id) idAliases.set(id, c);
+  return c;
+};
+
 function enrich(base: Omit<ItemView, 'id'>): ItemView {
+  const r = enrichRaw(base);
+  return { ...r, id: unify(base.kind, base.name, r.id) };
+}
+function enrichRaw(base: Omit<ItemView, 'id'>): ItemView {
   if (base.kind === 'achievement') {
     const id = dbAch.get(key(base.name));
     const a = id ? db.achievements[id] : undefined;

@@ -11,7 +11,7 @@ import { install, useInstall } from './model/install';
 import { ReportButton, ReportDialog } from './Report';
 import { EggRing, eggColor } from './ui/EggRing';
 import { burst, celebrateDofus, closeTrophy, useTrophy } from './model/celebrate';
-import { catalog, type DofusView, type ItemView } from './model/catalog';
+import { catalog, idAliases, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
 import { approveReset, askReset, exportProfile, finishReset, getHistory, hasCode, importProfile, isUnlocked, listResetRequests, login, logout, resetStatus, resetToken, setShare, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
 import { labelOf, search } from './model/search';
@@ -82,6 +82,8 @@ export function App() {
   useEffect(() => { if (info && info.id !== lastDofus) setLastDofus(info.id); }, [info?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { document.body.dataset.world = profile?.world ?? 'none'; }, [profile?.world]);
+  // Quêtes présentes dans plusieurs Dofus sous des identifiants différents : on reporte les anciennes coches.
+  useEffect(() => { if (!profile) return; for (const [old, id] of idAliases) if (isDone(profile.id, old) && !isDone(profile.id, id)) toggle(profile.id, id, true, { silent: true }); }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Précharge l'overlay : la mini-fenêtre doit s'ouvrir juste après le clic.
   useEffect(() => { const t = setTimeout(() => void overlayMod(), 2500); return () => clearTimeout(t); }, []);
   useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); watchTeamLive(profile?.id ?? null); }, [profile?.id]);
