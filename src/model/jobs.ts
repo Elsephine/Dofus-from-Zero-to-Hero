@@ -17,31 +17,40 @@ export const levelChoices = (j: JobPlan) => (jobCrafts[j.name] ?? []).map(c => p
 export const jobLevel = (j: JobPlan) => levels[j.name] ?? j.target;
 export function setJobLevel(name: string, lvl: number) {
   levels = { ...levels, [name]: lvl }; try { localStorage.setItem(LS, JSON.stringify(levels)); } catch { /* ignore */ }
-  cache = null; version++; subs.forEach(f => f());
+  version++; subs.forEach(f => f());
 }
 export const useJobLevels = () => useSyncExternalStore(f => { subs.add(f); return () => subs.delete(f); }, () => version);
 
-/** Ressources d'un métier jusqu'au niveau visé (somme des paliers), sinon la liste du guide. */
-export function jobItems(j: JobPlan): [string, number][] {
+/** Id de progression d'un palier de craft (coché = fait, ses ressources ne sont plus comptées). */
+export const craftId = (job: string, i: number) => `craft:${job}:${i}`;
+type Skip = (job: string, i: number) => boolean;
+const nk = (s: string) => norm(s).replace(/[^a-z0-9]+/g, '');
+
+/** Ressources d'un métier jusqu'au niveau visé (somme des paliers non cochés), sinon la liste du guide. */
+export function jobItems(j: JobPlan, skip?: Skip): [string, number][] {
   const cr = jobCrafts[j.name]; const lvl = jobLevel(j);
   if (!cr || cr.some(c => !c[3])) return j.items;
   const m = new Map<string, [string, number]>();
-  for (const [lv, , n, ing] of cr) {
-    if (palierEnd(lv) > lvl) break;
-    for (const [name, q] of ing) { const k = norm(name).replace(/[^a-z0-9]+/g, ''); const e = m.get(k); if (e) e[1] += q * n; else m.set(k, [name, q * n]); }
-  }
+  cr.forEach(([lv, , n, ing], i) => {
+    if (palierEnd(lv) > lvl || skip?.(j.name, i)) return;
+    for (const [name, q] of ing) { const k = nk(name); const e = m.get(k); if (e) e[1] += q * n; else m.set(k, [name, q * n]); }
+  });
+  return [...m.values()];
+}
+/** Même chose additionnée pour plusieurs personnages (chacun avec ses paliers cochés). */
+export function jobItemsFor(j: JobPlan, ids: number[], done: (p: number, id: string) => boolean): [string, number][] {
+  const m = new Map<string, [string, number]>();
+  for (const p of ids) for (const [n, q] of jobItems(j, (job, i) => done(p, craftId(job, i)))) { const k = nk(n); const e = m.get(k); if (e) e[1] += q; else m.set(k, [n, q]); }
   return [...m.values()];
 }
 
-// Une ressource demandée par plusieurs métiers n'apparaît qu'une fois dans la liste globale (quantités additionnées).
-let cache: { name: string; qty: number; jobs: string[] }[] | null = null;
-export function allJobRes() {
-  if (cache) return cache;
+/** Liste globale sans doublons (quantités additionnées), pour un ou plusieurs personnages. */
+export function allJobRes(ids?: number[], done?: (p: number, id: string) => boolean) {
   const m = new Map<string, { name: string; qty: number; jobs: string[] }>();
-  for (const j of jobs) for (const [n, q] of jobItems(j)) {
-    const k = norm(n).replace(/[^a-z0-9]+/g, '');
+  for (const j of jobs) for (const [n, q] of (ids && done ? jobItemsFor(j, ids, done) : jobItems(j))) {
+    const k = nk(n);
     if (!m.has(k)) m.set(k, { name: n, qty: 0, jobs: [] });
-    const e = m.get(k)!; e.qty += q; e.jobs.push(j.name);
+    const e = m.get(k)!; e.qty += q; if (!e.jobs.includes(j.name)) e.jobs.push(j.name);
   }
-  return (cache = [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')));
+  return [...m.values()].filter(x => x.qty > 0).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }

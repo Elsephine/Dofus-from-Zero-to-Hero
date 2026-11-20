@@ -5,7 +5,7 @@ import { BossImg } from './ui/BossImg';
 import { challengeOf, planRuns } from './model/achievements';
 import { useMemo, useRef, useState } from 'react';
 import { profiles } from './model/profiles';
-import { qtyOf, teamInfo, toggle } from './model/progress';
+import { isDone, qtyOf, teamInfo, toggle } from './model/progress';
 import { loadAvail, setClaim, setMyAvail, useTeamLive } from './model/teamlive';
 import { allJobRes, jobKey, useJobLevels } from './model/jobs';
 import { ResIcon } from './Mates';
@@ -157,10 +157,9 @@ export function Harvest({ profileId }: { profileId: number }) {
   const { claimOf } = useTeamLive();
   const { team } = teamInfo();
   const counted = profiles.filter(p => p.id === profileId || team[p.id]);
-  const factor = profiles.length;
   useJobLevels();
-  const rows = allJobRes().map(x => {
-    const k = jobKey(x.name); const need = x.qty * factor;
+  const rows = allJobRes(profiles.map(p => p.id), isDone).map(x => {
+    const k = jobKey(x.name); const need = x.qty;
     const have = counted.reduce((s, p) => s + (qtyOf(p.id, k) ?? 0), 0);
     return { ...x, k, need, have, missing: Math.max(0, need - have), owner: claimOf(k) };
   }).filter(r => r.missing > 0).sort((a, b) => b.missing - a.missing);
@@ -172,7 +171,7 @@ export function Harvest({ profileId }: { profileId: number }) {
   return (
     <section className="harvest">
       <h2>🌾 Répartition de la récolte</h2>
-      <p className="meta small">Ressources des métiers qui manquent encore à l’équipe (besoin pour les {factor} personnages − ce que vous avez). Prends une ressource avec ✋ : les autres savent que tu t’en occupes.</p>
+      <p className="meta small">Ressources des métiers qui manquent encore à l’équipe (besoin pour les {profiles.length} personnages, paliers déjà faits exclus − ce que vous avez). Prends une ressource avec ✋ : les autres savent que tu t’en occupes.</p>
       {groups.map(([title, list]) => list.length ? (
         <div key={title} className="harvest-group">
           <h3>{title} <small>({list.length})</small></h3>

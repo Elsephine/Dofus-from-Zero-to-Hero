@@ -6,14 +6,12 @@ import { profiles } from './model/profiles';
 import { post } from './model/messages';
 import { Mates, OfferButton, ResIcon } from './Mates';
 
-import { allJobRes, jobItems, jobKey, jobLevel, levelChoices, palierEnd, setJobLevel, useJobLevels } from './model/jobs';
+import { allJobRes, craftId, jobItemsFor, jobKey, jobLevel, levelChoices, palierEnd, setJobLevel, useJobLevels } from './model/jobs';
 import { ClaimButton } from './TeamLive';
 const key = jobKey;
 
 export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
   useJobLevels();
-  const ALL = allJobRes();
-  const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
   const lsMult = `fzth:v2:jobMult:${profileId}`;
   const [tab, setTab] = useState('global');
   const [mult, setMultState] = useState<number>(() => { try { return Number(localStorage.getItem(lsMult)) || 1; } catch { return 1; } });
@@ -29,7 +27,11 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const { team } = teamInfo();
   const counted = profiles.filter(p => p.id === profileId || team[p.id]); // personnages dont on connaît les quantités
   const notShared = profiles.filter(p => p.id !== profileId && !team[p.id]);
-  const factor = teamMode ? profiles.length : mult;
+  // Besoins : paliers de craft non cochés de chaque personnage (mode équipe : les 3 additionnés, déjà comptés → facteur 1).
+  const who = teamMode ? profiles.map(p => p.id) : [profileId];
+  const ALL = allJobRes(who, isDone);
+  const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
+  const factor = teamMode ? 1 : mult;
   const teamHave = (k: string) => counted.reduce((s, p) => s + (qtyOf(p.id, k) ?? 0), 0);
   const teamOk = (x: { name: string; qty: number }) => teamHave(key(x.name)) >= x.qty * factor;
   const done = teamMode ? ALL.filter(teamOk).length : ALL.filter(x => isDone(profileId, key(x.name))).length;
@@ -39,7 +41,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const doneToggle = (n: number) => n > 0 && (
     <label className="toggle show-done"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Voir les ressources déjà obtenues ({n})</label>);
   const job = jobs.find(j => j.name === tab);
-  const items = job ? jobItems(job) : [];
+  const items = job ? jobItemsFor(job, who, isDone) : [];
   const fmt = (q: number) => (q * mult).toLocaleString('fr-FR');
 
   const copy = async () => {
@@ -162,9 +164,9 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
             const list = jobCrafts[job.name].map((c, i) => ({ c, i })).filter(x => palierEnd(x.c[0]) <= jobLevel(job));
             return (
               <details className="job-crafts" open>
-                <summary>🔨 Crafts à faire jusqu’au niveau {jobLevel(job)} ({list.filter(x => isDone(profileId, `craft:${job.name}:${x.i}`)).length}/{list.length} paliers)</summary>
+                <summary>🔨 Crafts à faire jusqu’au niveau {jobLevel(job)} ({list.filter(x => isDone(profileId, craftId(job.name, x.i))).length}/{list.length} paliers)</summary>
                 <ul>{list.map(({ c: [lv, item, n, ing], i }) => {
-                  const id = `craft:${job.name}:${i}`; const ok = isDone(profileId, id);
+                  const id = craftId(job.name, i); const ok = isDone(profileId, id);
                   return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => toggle(profileId, id)} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}{ing?.length ? <small className="ing"> · {ing.map(([a, q]) => `${q * n} ${a}`).join(', ')}</small> : null}</span></label></li>;
                 })}</ul>
               </details>
