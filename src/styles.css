@@ -1439,3 +1439,12 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .qcounter > svg { color: var(--world-accent); flex: none; }
 .qcounter > span { flex: 1; min-width: 220px; display: flex; flex-direction: column; } .qcounter small { color: var(--muted); font-size: 12px; }
 .qcounter input { width: 110px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+
+.ov-trophy .trophy { padding: 18px 22px; max-width: 86vw; }
+.ov-trophy .trophy img { width: 110px; height: 110px; }
+.ov-trophy .trophy h2 { font-size: 24px; }
+.ov-confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.ov-trophy .trophy { position: relative; z-index: 1; }
+
+.ov-trophy { z-index: 200 !important; }
+.trophy { background: #fffaf7 !important; } body[data-theme="dark"] .trophy { background: #241a1c !important; }

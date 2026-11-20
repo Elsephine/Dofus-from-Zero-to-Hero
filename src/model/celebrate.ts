@@ -31,3 +31,18 @@ export function celebrateDofus(name: string, image?: string | null) {
 }
 export const closeTrophy = () => { trophy = null; ls.forEach(l => l()); };
 export const useTrophy = () => useSyncExternalStore(cb => { ls.add(cb); return () => ls.delete(cb); }, () => trophy);
+
+/** Pluie de confettis dans un autre document (la mini-fenêtre de l'overlay), sur un canvas qui lui appartient. */
+export function confettiIn(canvas: HTMLCanvasElement, big = true) {
+  if (calm()) return;
+  void import('canvas-confetti').then(m => {
+    const fire = m.default.create(canvas, { resize: true, useWorker: false });
+    const end = Date.now() + (big ? 1600 : 500);
+    const frame = () => {
+      void fire({ particleCount: 5, angle: 60, spread: 60, origin: { x: 0, y: .75 }, colors: COLORS, scalar: .8 });
+      void fire({ particleCount: 5, angle: 120, spread: 60, origin: { x: 1, y: .75 }, colors: COLORS, scalar: .8 });
+      if (Date.now() < end) (canvas.ownerDocument.defaultView ?? window).requestAnimationFrame(frame);
+    };
+    frame();
+  });
+}

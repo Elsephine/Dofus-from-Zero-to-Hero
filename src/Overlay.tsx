@@ -8,6 +8,8 @@ import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
 import { sync, toggle, useProgress } from './model/progress';
 import { overlayClosed, overlayOpened } from './model/overlayState';
+import { closeTrophy, confettiIn, useTrophy } from './model/celebrate';
+import { eggColor } from './ui/EggRing';
 import { achKey, challengeOf, useAchData } from './model/achievements';
 import { useDungeons } from './model/dungeonData';
 import { dungeonBosses } from './data/jeu/boss';
@@ -26,7 +28,33 @@ const LS = 'fzth:v2:overlayDofus';
 type Mode = 'jour' | 'quetes' | 'donjons' | 'ressources';
 const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html';
 
+/** Annonce « Dofus obtenu ! » dans l'overlay aussi (même déclencheur que le site). */
+function OverlayTrophy() {
+  const t = useTrophy();
+  const canvas = useRef<HTMLCanvasElement>(null);
+  // Dans la mini-fenêtre (PiP), les confettis du site tombent dans l'autre fenêtre : on lance les nôtres ici.
+  useEffect(() => { if (t && canvas.current && location.hash !== '#overlay') confettiIn(canvas.current); }, [t]);
+  if (!t) return null;
+  const src = t.image ? new URL(`${import.meta.env.BASE_URL}dofus/${t.image}`, location.href).href : undefined;
+  return (
+    <div className="trophy-back ov-trophy" onClick={closeTrophy}>
+      <canvas ref={canvas} className="ov-confetti" />
+      <div className="trophy" style={{ '--egg': eggColor(t.image) } as React.CSSProperties} onClick={e => e.stopPropagation()}>
+        <p className="eyebrow">Félicitations</p>
+        {src && <img src={src} alt="" />}
+        <h2>Dofus obtenu !</h2>
+        <strong>{t.name}</strong>
+        <button className="primary" onClick={closeTrophy}>Continuer</button>
+      </div>
+    </div>
+  );
+}
+
 export function OverlayView({ profileId }: { profileId: number }) {
+  return <><OverlayViewInner profileId={profileId} /><OverlayTrophy /></>;
+}
+
+function OverlayViewInner({ profileId }: { profileId: number }) {
   const { isDone, status } = useProgress();
   useEffect(() => { if (location.hash !== '#overlay') return; const t = setInterval(() => void sync(), 5000); return () => clearInterval(t); }, []);
   const [mode, setModeState] = useState<Mode>(() => { try { return (localStorage.getItem('fzth:v2:overlayMode') as Mode) ?? 'quetes'; } catch { return 'quetes'; } });
