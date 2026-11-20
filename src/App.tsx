@@ -21,6 +21,7 @@ import { resourceNeeds } from './model/resources';
 import { iconInfo, type IconFamily } from './model/icons';
 import { requirements } from './model/requirements';
 const Tools = lazy(() => import('./Tools').then(m => ({ default: m.Tools })));
+const Stuffs = lazy(() => import('./Stuffs').then(m => ({ default: m.Stuffs })));
 import { Mates, OfferButton, ResIcon } from './Mates';
 import { onNewMessages, post as postMessage, useMessages, watchMessages } from './model/messages';
 import { Clock } from './Clock';
@@ -54,7 +55,7 @@ const LEGACY: Record<string, string> = { home: 'today', team: 'team/ensemble', m
 const normView = (v: string) => LEGACY[v] ?? v;
 const fromHash = () => (location.hash.startsWith('#/') ? decodeURIComponent(location.hash.slice(2)) : null);
 /** Section du menu à laquelle appartient une page (une page de Dofus est rangée dans « Quêtes », comme en jeu). */
-export const sectionOf = (v: string) => v === 'today' || v === 'almanax' ? 'today' : v.startsWith('team') ? 'team' : ['succes', 'jobs', 'tools'].includes(v) ? v : 'quetes';
+export const sectionOf = (v: string) => v === 'today' || v === 'almanax' ? 'today' : v.startsWith('team') ? 'team' : ['succes', 'jobs', 'tools'].includes(v) ? v : v === 'stuffs' ? 'tools' : 'quetes';
 function useRoute(): [string, (v: string) => void] {
   const [view, setState] = useState(() => {
     const h = fromHash(); if (h) return normView(h);
@@ -182,7 +183,8 @@ export function App() {
         : view.startsWith('quetes/') ? <Quests profileId={profile.id} isDone={isDone} tab={view.slice(7)} onTab={t => setView('quetes/' + t)} dofusGrid={<DofusGrid profileId={profile.id} isDone={isDone} onOpen={setView} />} />
         : view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} />
         : view.startsWith('team') ? <Team profileId={profile.id} isDone={isDone} tab={view.slice(5) || 'ensemble'} onTab={t => setView('team/' + t)} onOpenDofus={setView} />
-        : view === 'tools' ? <Tools profileId={profile.id} />
+        : view === 'tools' ? <Tools profileId={profile.id} onStuffs={() => setView('stuffs')} />
+        : view === 'stuffs' ? <Stuffs profileId={profile.id} />
         : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} />
         : info ? (
           <div className="with-rail">

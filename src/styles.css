@@ -1478,3 +1478,30 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .stuff-list li { flex-wrap: wrap; }
 .stuff-preview { flex-basis: 100%; margin-top: 6px; }
 .stuff-preview img { width: 100%; border-radius: 10px; border: 1px solid var(--world-border); display: block; }
+
+/* Galerie des stuffs */
+.stuffs { display: grid; gap: 14px; }
+.stuffs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; }
+.stuffs-search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--world-border); border-radius: 999px; padding: 6px 12px; background: var(--panel2); }
+.stuffs-search input { border: 0; background: transparent; color: var(--text); flex: 1; outline: none; }
+.stuffs-bar select { border-radius: 999px; padding: 6px 12px; border: 1px solid var(--world-border); background: var(--panel2); color: var(--text); }
+.stuffs-add { display: grid; gap: 8px; padding: 12px; }
+.stuff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.stuff-grid.compact { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.stuff-card { border: 1.5px solid var(--world-accent); border-radius: 14px; overflow: hidden; background: #0c0f14; box-shadow: 0 0 0 1px rgba(0,0,0,.3), 0 6px 18px -8px var(--world-glow); transition: transform .15s, box-shadow .15s; }
+.stuff-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -8px var(--world-accent); }
+.stuff-card header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: #fff;
+  background: linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.15)), linear-gradient(90deg, var(--world-accent), #3a2412 85%); }
+.stuff-card header .avatar { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); object-fit: cover; }
+.stuff-card header strong { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; }
+.stuff-card header small { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.45); white-space: nowrap; }
+.stuff-card header .icon-btn { background: transparent; border: 0; color: #fff; opacity: .6; padding: 2px; cursor: pointer; }
+.stuff-card header .icon-btn:hover { opacity: 1; }
+.stuff-shot { position: relative; display: block; aspect-ratio: 7 / 5; background: #0c0f14; }
+.stuff-grid.compact .stuff-shot { aspect-ratio: 11 / 8; }
+.stuff-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; transition: opacity .3s; }
+.stuff-ph { position: absolute; inset: 0; display: grid; place-items: center; color: #aab; font-size: 13px; text-align: center; padding: 12px; }
+.stuff-open { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 4px; align-items: center; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; opacity: 0; transition: opacity .15s; }
+.stuff-card:hover .stuff-open { opacity: 1; }
+.stuffs-open-btn { margin-bottom: 8px; }
+.stuff-card header strong, .stuff-card header small { color: #fff !important; text-shadow: 0 1px 2px rgba(0,0,0,.6); }

@@ -12,7 +12,7 @@ const SOLVERS = [
 ];
 const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html';
 
-export function Tools({ profileId }: { profileId: number }) {
+export function Tools({ profileId, onStuffs }: { profileId: number; onStuffs?: () => void }) {
   const { list, online, add, remove } = useStuffs(profileId);
   const [name, setName] = useState(''); const [url, setUrl] = useState(''); const [err, setErr] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
@@ -52,6 +52,7 @@ export function Tools({ profileId }: { profileId: number }) {
 
         <section className="toolbox">
           <h3>🛡️ Bibliothèque DofusBook</h3>
+          {onStuffs && <button className="primary stuffs-open-btn" onClick={onStuffs}>🖼️ Ouvrir la galerie des stuffs ({list.length})</button>}
           <form className="stuff-form" onSubmit={submit}>
             <input value={name} onChange={e => setName(e.target.value)} maxLength={90} placeholder="Nom du stuff (ex. Féca terre PvM)" />
             <input value={url} onChange={e => setUrl(e.target.value)} type="url" placeholder="https://www.dofusbook.net/…" />
