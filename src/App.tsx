@@ -1,3 +1,4 @@
+import { GiftPopup } from './Gifts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight, Target } from 'lucide-react';
 import { repeatables } from './data/jeu/quetes';
@@ -172,6 +173,7 @@ export function App() {
       <AutoAchievements key={profile.id} profileId={profile.id} />
       <ReportDialog profileId={profile.id} />
       <ResetRequests profileId={profile.id} />
+      <GiftPopup profileId={profile.id} />
 
       <Suspense fallback={<div className="panel page-loading"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div>}>
       <div key={view} className="page-fade">

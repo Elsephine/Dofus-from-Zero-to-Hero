@@ -272,3 +272,10 @@ export const addReport = (p: number, item: string, label: string, body: string) 
 export const listReports = async (p: number) => (await rpc<Report[]>('fzth_report_list', { p_profile: p, p_code: codes[p] })) ?? [];
 export const resolveReport = (p: number, id: string, resolved: boolean) => rpc('fzth_report_resolve', { p_profile: p, p_code: codes[p], p_id: id, p_resolved: resolved });
 export const entryAt = (profile: number, id: string) => entries.get(key(profile, id))?.at;
+
+// ---- Codes cadeaux Dofus partagés par l'équipe ----
+export interface Gift { id: string; code: string; reward: string; expires: string | null; added_by: number; created_at: string }
+export async function listGifts(p: number) { return (await rpc<Gift[]>('fzth_gift_list', { p_profile: p, p_code: codes[p] })) ?? []; }
+export const addGift = (p: number, gift: string, reward: string, expires: string | null) =>
+  rpc<string>('fzth_gift_add', { p_profile: p, p_code: codes[p], p_gift: gift, p_reward: reward, p_expires: expires || null });
+export const deleteGift = (p: number, id: string) => rpc('fzth_gift_delete', { p_profile: p, p_code: codes[p], p_id: id });

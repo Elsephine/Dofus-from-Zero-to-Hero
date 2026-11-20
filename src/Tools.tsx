@@ -1,5 +1,6 @@
 // Page « Outils » : reprise de la boîte à outils de l'ancien site.
 import { ReportList } from './Report';
+import { GiftCodes } from './Gifts';
 import { useState } from 'react';
 import { profiles } from './model/profiles';
 import { useStuffs } from './model/stuffs';
@@ -26,6 +27,7 @@ export function Tools({ profileId }: { profileId: number }) {
       <h2>Outils d’aventuriers</h2>
       <p className="meta">Des outils simples, partagés entre les trois personnages.</p>
       <div className="toolgrid">
+        <GiftCodes profileId={profileId} />
         <ReportList profileId={profileId} />
         <section className="toolbox">
           <h3>🧭 Chasse aux trésors</h3>

@@ -1463,3 +1463,15 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .job-lvl select { padding: 4px 8px; border-radius: 8px; border: 1px solid var(--world-border); background: var(--panel2); color: var(--text); font-weight: 700; }
 .job-crafts .ing { display: block; color: var(--muted); font-size: .82em; }
 .job-crafts li.done .ing { text-decoration: none; }
+
+/* Codes cadeaux */
+.gift-pop { max-width: 420px; text-align: center; display: grid; gap: 8px; justify-items: center; background: var(--panel2); color: var(--text); border: 1px solid var(--world-border); }
+.gift-pop .gift-ic { color: var(--world-accent); }
+.gift-code { font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 800; letter-spacing: .06em; padding: 10px 16px; border-radius: 10px; border: 2px dashed var(--world-accent); background: var(--world-glow); color: var(--text); cursor: pointer; }
+.gift-code.small { font-size: 14px; padding: 4px 8px; }
+.gift-actions { flex-wrap: wrap; justify-content: center; gap: 6px; }
+.gift-list { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; }
+.gift-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gift-list li.done .gift-code { opacity: .5; text-decoration: line-through; }
+.gift-list .who img { width: 20px; height: 20px; border-radius: 50%; }
+.gift-form { display: grid; gap: 6px; margin: 8px 0; }
