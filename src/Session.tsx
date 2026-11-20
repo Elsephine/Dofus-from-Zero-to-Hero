@@ -11,6 +11,9 @@ import { entryAt, listDone, teamInfo, toggle } from './model/progress';
 import { post } from './model/messages';
 import { pushToasts } from './model/notifications';
 import { createGoal } from './model/goals';
+import { achKey, objDone, useAchData } from './model/achievements';
+import { useProgress } from './model/progress';
+import { useRef } from 'react';
 import { burst } from './model/celebrate';
 
 type IsDone = (p: number, id: string) => boolean;
@@ -255,4 +258,29 @@ export function Roulette({ profileId, isDone, onOpen }: { profileId: number; isD
       </> : <p className="meta">Aucune quête de groupe à venir dans vos Dofus en cours.</p>}
     </section>
   );
+}
+
+// ---------- Succès validés automatiquement ----------
+/** Dès que tous les objectifs d'un succès sont faits (quêtes cochées, succès inclus…), on coche le succès. */
+export function AutoAchievements({ profileId }: { profileId: number }) {
+  const d = useAchData();
+  const { version, isDone } = useProgress();
+  const prev = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    if (!d) return;
+    const t = setTimeout(() => {
+      const complete = new Set<number>();
+      for (const a of d.list) if (a.o && a.o.every((_, i) => objDone(d, a, i, profileId, isDone))) complete.add(a.id);
+      // Seulement ceux qui viennent de se compléter (un succès décoché à la main n'est pas recoché tant que rien ne change).
+      const fresh = [...complete].filter(id => !prev.current?.has(id) && !isDone(profileId, achKey(id)));
+      prev.current = complete;
+      if (!fresh.length) return;
+      for (const id of fresh) toggle(profileId, achKey(id), true, { silent: true });
+      const names = fresh.map(id => d.byId.get(id)!.n);
+      pushToasts([{ id: `auto-ach-${fresh.join('-')}`, kind: 'msg', cat: 'news', who: profileId, at: new Date().toISOString(),
+        text: `🏆 Succès validé${names.length > 1 ? 's' : ''} : ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}` }]);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [d, version, profileId, isDone]);
+  return null;
 }

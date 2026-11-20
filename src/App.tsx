@@ -29,7 +29,7 @@ import { setPresencePage, watchTeamLive } from './model/teamlive';
 import { OnlineNow } from './Presence';
 const Jobs = lazy(() => import('./Jobs').then(m => ({ default: m.Jobs })));
 import { CatchUp } from './CatchUp';
-import { CallButton, LastNote, NowCard, Roulette, SessionCard, SessionChip, SessionRecap, SessionWatcher } from './Session';
+import { AutoAchievements, CallButton, LastNote, NowCard, Roulette, SessionCard, SessionChip, SessionRecap, SessionWatcher } from './Session';
 const Quests = lazy(() => import('./Quests').then(m => ({ default: m.Quests })));
 const Achievements = lazy(() => import('./Achievements').then(m => ({ default: m.Achievements })));
 import { almostDone, achKey, achsForQuest, eventStatus, useAchData } from './model/achievements';
@@ -167,6 +167,7 @@ export function App() {
       <TrophyModal />
       <SessionRecap isDone={isDone} />
       <SessionWatcher profileId={profile.id} />
+      <AutoAchievements key={profile.id} profileId={profile.id} />
       <ReportDialog profileId={profile.id} />
       <ResetRequests profileId={profile.id} />
 
