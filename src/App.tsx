@@ -493,7 +493,7 @@ function Today({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: n
   const offered = alm ? isDone(profileId, `alm-done:${alm.date}`) : false;
   return (
     <main className="today panel">
-      <LastNote profileId={profileId} />
+      <LastNote profileId={profileId} isDone={isDone} onOpen={onOpen} />
       <div className="today-top">
         <NowCard profileId={profileId} isDone={isDone} onOpen={onOpen} />
         <SessionCard profileId={profileId} isDone={isDone} />

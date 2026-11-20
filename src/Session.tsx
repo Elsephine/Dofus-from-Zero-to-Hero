@@ -158,8 +158,8 @@ export function SessionRecap({ isDone }: { isDone: IsDone }) {
           const di = dofusInfo.find(d => d.id === m.raw.id);
           return <li key={m.raw.id}>{di?.image && <img src={img(di.image)} alt="" />}{m.raw.name} <b>+{Math.round((m.d / Math.max(1, m.t)) * 100)} %</b></li>;
         })}</ul>}
-        <label className="recap-note"><StickyNote size={15} /> Où j’en étais (pour la prochaine fois)
-          <input value={note} onChange={e => setNote(e.target.value)} maxLength={200} placeholder="ex. j’allais chercher la clé du Kardorim" autoFocus />
+        <label className="recap-note"><StickyNote size={15} /> Une note pour la prochaine fois ? (facultatif)
+          <input value={note} onChange={e => setNote(e.target.value)} maxLength={200} placeholder="ex. j’allais chercher la clé du Kardorim" />
         </label>
         <button className="primary" onClick={close}>Enregistrer et fermer</button>
       </div>
@@ -167,16 +167,33 @@ export function SessionRecap({ isDone }: { isDone: IsDone }) {
   );
 }
 
-/** Rappel de la note laissée à la fin de la dernière session. */
-export function LastNote({ profileId }: { profileId: number }) {
+/** « Où j'en étais » : automatique, d'après la dernière quête cochée (+ la note facultative de fin de session). */
+export function LastNote({ profileId, isDone, onOpen }: { profileId: number; isDone: IsDone; onOpen: (v: string) => void }) {
   useVer();
   const n = ls.get<{ text: string; at: string } | null>(noteKey(profileId), null);
-  if (!n) return null;
+  // Dernière quête cochée, son Dofus et la quête suivante.
+  let last: { id: string; at: string } | null = null;
+  for (const id of listDone(profileId)) { if (!isQuestKey(id)) continue; const at = entryAt(profileId, id) ?? ''; if (!last || at > last.at) last = { id, at }; }
+  let ctx: { dofus: string; dofusId: string; name: string; next?: string } | null = null;
+  // Une même quête sert à plusieurs Dofus : on préfère le dernier Dofus ouvert.
+  const lastDofus = ls.get('fzth:v2:lastDofus', '');
+  const order = [...catalog].sort((a, b) => Number(b.id === lastDofus) - Number(a.id === lastDofus));
+  if (last) for (const raw of order) {
+    const items = viewFor(raw, profileId, isDone).sections.flatMap(x => x.items);
+    const k = items.findIndex(i => i.id === last!.id);
+    if (k >= 0) { ctx = { dofus: raw.name, dofusId: raw.id, name: items[k].name, next: items.slice(k + 1).find(i => !isDone(profileId, i.id))?.name ?? items.find(i => !isDone(profileId, i.id))?.name }; break; }
+  }
+  if (!ctx && !n) return null;
+  const when = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <div className="last-note">
       <StickyNote size={18} />
-      <span><small>La dernière fois ({new Date(n.at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}), tu en étais à :</small><strong>{n.text}</strong></span>
-      <button onClick={() => { localStorage.removeItem(noteKey(profileId)); bump(); }} aria-label="Effacer la note"><X size={16} /></button>
+      <span>
+        {ctx && last && <><small>Où j’en étais ({when(last.at)})</small><strong>Dernière quête : « {ctx.name} » · {ctx.dofus}</strong>{ctx.next && <em>Prochaine : {ctx.next}</em>}</>}
+        {n && <em className="note-txt">📝 {n.text}</em>}
+      </span>
+      {ctx && <button className="primary" onClick={() => onOpen(ctx!.dofusId)}>Reprendre</button>}
+      {n && <button onClick={() => { localStorage.removeItem(noteKey(profileId)); bump(); }} aria-label="Effacer la note"><X size={16} /></button>}
     </div>
   );
 }

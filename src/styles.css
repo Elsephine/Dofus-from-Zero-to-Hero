@@ -1401,3 +1401,4 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 @media (max-width: 1100px) { .today-top, .today-grid.two { grid-template-columns: 1fr; } .today-team { flex-direction: column; } }
 .overlay footer button.on { background: var(--world-accent); color: var(--on-accent); }
 .trophy.recap { background: #fffaf7; } body[data-theme="dark"] .trophy.recap { background: #241a1c; }
+.last-note em { font-style: normal; font-size: 13px; color: var(--muted); } .last-note .note-txt { color: var(--text); margin-top: 2px; } .last-note button.primary { color: var(--on-accent); }
