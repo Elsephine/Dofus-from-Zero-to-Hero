@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { AlarmClock, Castle, Hourglass, Medal, ScrollText, Star, Compass, Skull, BookOpen, Hammer, PawPrint, PartyPopper, Swords, Clock4, Moon, Shield, Users, Gem } from 'lucide-react';
 import { burst } from './model/celebrate';
+import { bossByName } from './data/jeu/boss';
+import { BossImg } from './ui/BossImg';
 import type { Ach } from './data/jeu/succes';
 import { GAME_VERSION } from './data/jeu/donjons';
 import { achKey, achProgress, almostDone, eventStatus, norm, objDone, objKey, pointsOf, useAchData, type AchData, type IsDone } from './model/achievements';
@@ -129,7 +131,7 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
               </button>
               {!isClosed && clusters.map(c => c.boss && c.items.length > 1 ? (
                 <div key={c.key} className="boss-cluster">
-                  <p className="boss-name"><Skull size={13} /> {c.boss} <small>{c.items.filter(a => isDone(profileId, achKey(a.id))).length}/{c.items.length}</small></p>
+                  <p className="boss-name"><BossImg gfx={bossByName[c.boss]?.[1]} id={bossByName[c.boss]?.[0]} size={34} name={c.boss} /> {c.boss} <small>{c.items.filter(a => isDone(profileId, achKey(a.id))).length}/{c.items.length}</small></p>
                   <ul className="ach-rows">{c.items.map(a => <AchRow key={a.id} d={d} a={a} profileId={profileId} isDone={isDone} showCat={!!nq} />)}</ul>
                 </div>
               ) : <ul key={c.key} className="ach-rows">{c.items.map(a => <AchRow key={a.id} d={d} a={a} profileId={profileId} isDone={isDone} showCat={!!nq} />)}</ul>)}

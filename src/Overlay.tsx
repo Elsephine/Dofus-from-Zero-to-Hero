@@ -8,7 +8,10 @@ import { viewFor } from './model/choices';
 import { profiles } from './model/profiles';
 import { sync, toggle, useProgress } from './model/progress';
 import { overlayClosed, overlayOpened } from './model/overlayState';
-import { achKey, useAchData } from './model/achievements';
+import { achKey, challengeOf, useAchData } from './model/achievements';
+import { useDungeons } from './model/dungeonData';
+import { dungeonBosses } from './data/jeu/boss';
+import { BossImg } from './ui/BossImg';
 import { repeatables } from './data/jeu/quetes';
 import { favKey, repKey, repTodo } from './model/repeat';
 import { cachedRange, parisToday } from './model/almanax';
@@ -20,7 +23,7 @@ import { useTeamLive, setClaim } from './model/teamlive';
 import { ResIcon } from './Mates';
 
 const LS = 'fzth:v2:overlayDofus';
-type Mode = 'jour' | 'quetes' | 'ressources';
+type Mode = 'jour' | 'quetes' | 'donjons' | 'ressources';
 const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html';
 
 export function OverlayView({ profileId }: { profileId: number }) {
@@ -29,6 +32,7 @@ export function OverlayView({ profileId }: { profileId: number }) {
   const [mode, setModeState] = useState<Mode>(() => { try { return (localStorage.getItem('fzth:v2:overlayMode') as Mode) ?? 'quetes'; } catch { return 'quetes'; } });
   const setMode = (m: Mode) => { setModeState(m); try { localStorage.setItem('fzth:v2:overlayMode', m); } catch { /* ignore */ } };
   if (mode === 'jour') return <OverlayDay profileId={profileId} isDone={isDone} status={status} onMode={setMode} />;
+  if (mode === 'donjons') return <OverlayDungeons profileId={profileId} isDone={isDone} onMode={setMode} />;
   if (mode === 'ressources') return <OverlayResources profileId={profileId} status={status} onMode={setMode} />;
   return <OverlayQuests profileId={profileId} isDone={isDone} status={status} onMode={setMode} />;
 }
@@ -44,7 +48,70 @@ function ModeTabs({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }) {
     <div className="ov-tabs">
       <button className={mode === 'jour' ? 'on' : ''} onClick={() => onMode('jour')}>☀ Aujourd’hui</button>
       <button className={mode === 'quetes' ? 'on' : ''} onClick={() => onMode('quetes')}>📜 Quêtes</button>
+      <button className={mode === 'donjons' ? 'on' : ''} onClick={() => onMode('donjons')}>🏰 Donjons</button>
       <button className={mode === 'ressources' ? 'on' : ''} onClick={() => onMode('ressources')}>🌾 Ressources</button>
+    </div>
+  );
+}
+
+/** Overlay « Donjons » : succès de donjon à cocher, avec l'image du boss. Ceux du Dofus en cours d'abord. */
+function OverlayDungeons({ profileId, isDone, onMode }: { profileId: number; isDone: (p: number, id: string) => boolean; onMode: (m: Mode) => void }) {
+  const profile = profiles.find(p => p.id === profileId)!;
+  const dj = useDungeons();
+  const { team } = teamInfo();
+  const mates = profiles.filter(p => p.id !== profileId && team[p.id]);
+  const abs = (path: string) => new URL(`${import.meta.env.BASE_URL}${path}`, location.href).href;
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState<number | null>(null);
+  const [hideDone, setHideDone] = useState(true);
+  const raw = catalog.find(c => c.id === (localStorage.getItem(LS) ?? '')) ?? catalog[0];
+  if (!dj) return <div className="overlay ov-quests" data-world={profile.world}><ModeTabs mode="donjons" onMode={onMode} /><p className="meta">Chargement…</p></div>;
+  // Donjons demandés par les quêtes restantes du Dofus affiché.
+  const mine: number[] = [];
+  for (const i of viewFor(raw, profileId, isDone).sections.flatMap(x => x.items)) {
+    for (const label of [i.dungeon?.name, ...(i.objectives ?? []).filter(o => o.type === 'donjon').map(o => o.label)]) {
+      const d = label ? dj.dungeonFor(label) : undefined; if (d && !mine.includes(d.id)) mine.push(d.id);
+    }
+  }
+  const nq = q.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const match = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(nq);
+  const list = nq ? dj.dungeons.filter(d => d.ach.length > 0).filter(d => match(d.name) || (dungeonBosses[d.id] ?? []).some(b => match(b.n))).slice(0, 20) : mine.map(id => dj.dungeons.find(d => d.id === id)!).filter(Boolean);
+  return (
+    <div className="overlay ov-quests ov-dj" data-world={profile.world}>
+      <NoPipNotice />
+      <ModeTabs mode="donjons" onMode={onMode} />
+      <input className="ov-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Chercher un donjon ou un boss…" />
+      <div className="ov-dj-sub">
+        <span>{nq ? 'Résultats' : `Donjons du ${raw.name}`}</span>
+        <label><input type="checkbox" checked={hideDone} onChange={e => setHideDone(e.target.checked)} /> Masquer les faits</label>
+      </div>
+      <ul className="ov-dj-list">
+        {list.map(d => {
+          const boss = dungeonBosses[d.id]?.[0];
+          const done = d.ach.filter(a => isDone(profileId, achKey(a.id))).length;
+          const achs = hideDone ? d.ach.filter(a => !isDone(profileId, achKey(a.id))) : d.ach;
+          const isOpen = open === d.id || (list.length === 1);
+          return (
+            <li key={d.id} className={done === d.ach.length ? 'complete' : ''}>
+              <button className="ov-dj-head" onClick={() => setOpen(isOpen ? null : d.id)}>
+                <BossImg gfx={boss?.g} id={boss?.id} size={46} name={boss?.n} />
+                <span><strong>{boss?.n ?? d.name}</strong><small>{d.name} · niv. {d.lvl}</small></span>
+                <b>{done}/{d.ach.length}</b>
+              </button>
+              {isOpen && <ul className="ov-dj-achs">{achs.map(a => {
+                const ok = isDone(profileId, achKey(a.id));
+                return (
+                  <li key={a.id} title={a.tip || a.desc}>
+                    <label><input type="checkbox" checked={ok} onChange={() => toggle(profileId, achKey(a.id))} /> {challengeOf(a) ?? 'Vaincre le boss'} <small>{a.pts} pts</small></label>
+                    {mates.map(m => <img key={m.id} src={abs('persos/' + m.image)} alt={m.name} className={isDone(m.id, achKey(a.id)) ? 'ok' : 'no'} title={`${m.name} : ${isDone(m.id, achKey(a.id)) ? 'fait' : 'pas encore'}`} />)}
+                  </li>
+                );
+              })}{!achs.length && <li className="meta small">✓ Tout est fait ici</li>}</ul>}
+            </li>
+          );
+        })}
+        {!list.length && <li className="meta small">{nq ? 'Aucun donjon trouvé.' : 'Aucun donjon demandé par ce Dofus : cherche-en un ci-dessus.'}</li>}
+      </ul>
     </div>
   );
 }

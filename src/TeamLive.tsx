@@ -1,5 +1,7 @@
 // Équipe en direct : qui est en ligne, disponibilités de la semaine, répartition de la récolte, succès de donjon à plusieurs.
 import { dungeonKeys } from './data/jeu/clefs';
+import { dungeonBosses } from './data/jeu/boss';
+import { BossImg } from './ui/BossImg';
 import { challengeOf, planRuns } from './model/achievements';
 import { useMemo, useRef, useState } from 'react';
 import { profiles } from './model/profiles';
@@ -263,6 +265,7 @@ export function DungeonAchievements({ profileId, isDone }: { profileId: number; 
           return (
             <li key={d.id} className={ours.has(d.id) ? 'ours' : ''}>
               <button className="dj-head" onClick={() => setOpenId(isOpen && openId === d.id ? null : d.id)}>
+                <BossImg gfx={dungeonBosses[d.id]?.[0]?.g} id={dungeonBosses[d.id]?.[0]?.id} size={36} name={dungeonBosses[d.id]?.[0]?.n} />
                 <strong>{d.name}</strong> <small>niv. {d.lvl}</small>{ours.has(d.id) && <span className="chip quest">🎯 objectif</span>}
                 <span className="meta small">{done}/{d.ach.length} pour toi</span>
               </button>
