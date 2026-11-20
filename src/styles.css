@@ -1402,3 +1402,11 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .overlay footer button.on { background: var(--world-accent); color: var(--on-accent); }
 .trophy.recap { background: #fffaf7; } body[data-theme="dark"] .trophy.recap { background: #241a1c; }
 .last-note em { font-style: normal; font-size: 13px; color: var(--muted); } .last-note .note-txt { color: var(--text); margin-top: 2px; } .last-note button.primary { color: var(--on-accent); }
+
+.ach-gh.fold { width: 100%; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+.ach-gh.fold:hover span { color: var(--world-accent); }
+.ach-group.closed { opacity: .85; }
+.ach-fold-all { display: flex; gap: 14px; justify-content: flex-end; font-size: 12.5px; }
+.boss-cluster { margin-bottom: 8px; }
+.boss-name { display: flex; align-items: center; gap: 6px; margin: 8px 2px 4px; font-size: 13px; font-weight: 700; color: var(--world-accent); }
+.boss-name small { font-weight: 500; color: var(--muted); }

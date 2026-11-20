@@ -93,6 +93,9 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
   const list = d.list.filter(a => (nq ? norm(a.n + ' ' + a.d).includes(nq) : d.top(a.c).id === cat) && (showDone || !isDone(profileId, achKey(a.id))));
   const groups = nq ? [{ id: -1, name: `Résultats pour « ${q} »`, items: list.slice(0, 150) }]
     : d.cats.filter(c => c.id === cat || d.top(c.id).id === cat).map(c => ({ id: c.id, name: c.id === cat ? 'Général' : c.name, items: list.filter(a => a.c === c.id) })).filter(g => g.items.length);
+  // Groupes repliés (retenus sur l'appareil).
+  const [closed, setClosedState] = useState<number[]>(() => { try { return JSON.parse(localStorage.getItem('fzth:v2:achClosed') ?? '[]'); } catch { return []; } });
+  const setClosed = (v: number[]) => { setClosedState(v); try { localStorage.setItem('fzth:v2:achClosed', JSON.stringify(v)); } catch { /* ignore */ } };
   const hidden = (nq ? d.list.filter(a => norm(a.n + ' ' + a.d).includes(nq)) : d.list.filter(a => d.top(a.c).id === cat)).filter(a => isDone(profileId, achKey(a.id))).length;
   return (
     <div className="ach-cat-layout">
@@ -110,16 +113,49 @@ function Catalogue({ d, profileId, isDone }: { d: AchData; profileId: number; is
           <input className="dj-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Chercher un succès (nom, boss, zone…)" />
           <label className="toggle"><input type="checkbox" checked={!showDone} onChange={e => setShowDone(!e.target.checked)} /> Masquer les succès obtenus{hidden > 0 ? ` (${hidden})` : ''}</label>
         </div>
-        {groups.map(g => (
-          <div key={g.id} className="ach-group">
-            <h3 className="ach-gh"><span>{g.name}</span><small>{g.items.length}</small></h3>
-            <ul className="ach-rows">{g.items.map(a => <AchRow key={a.id} d={d} a={a} profileId={profileId} isDone={isDone} showCat={!!nq} />)}</ul>
+        {groups.length > 1 && (
+          <div className="ach-fold-all">
+            <button className="link-like" onClick={() => setClosed(groups.map(g => g.id))}>Tout replier</button>
+            <button className="link-like" onClick={() => setClosed([])}>Tout déplier</button>
           </div>
-        ))}
+        )}
+        {groups.map(g => {
+          const isClosed = closed.includes(g.id);
+          const clusters = byBoss(g.items);
+          return (
+            <div key={g.id} className={`ach-group${isClosed ? ' closed' : ''}`}>
+              <button className="ach-gh fold" onClick={() => setClosed(isClosed ? closed.filter(x => x !== g.id) : [...closed, g.id])} aria-expanded={!isClosed}>
+                <span>{isClosed ? '▸' : '▾'} {g.name}</span><small>{g.items.length}</small>
+              </button>
+              {!isClosed && clusters.map(c => c.boss && c.items.length > 1 ? (
+                <div key={c.key} className="boss-cluster">
+                  <p className="boss-name"><Skull size={13} /> {c.boss} <small>{c.items.filter(a => isDone(profileId, achKey(a.id))).length}/{c.items.length}</small></p>
+                  <ul className="ach-rows">{c.items.map(a => <AchRow key={a.id} d={d} a={a} profileId={profileId} isDone={isDone} showCat={!!nq} />)}</ul>
+                </div>
+              ) : <ul key={c.key} className="ach-rows">{c.items.map(a => <AchRow key={a.id} d={d} a={a} profileId={profileId} isDone={isDone} showCat={!!nq} />)}</ul>)}
+            </div>
+          );
+        })}
         {!groups.length && <p className="done-all">🎉 Rien à faire ici{showDone ? '' : ' (les succès obtenus sont masqués)'} !</p>}
       </section>
     </div>
   );
+}
+
+/** Boss d'un succès de donjon (« Vaincre le Bouftou Royal dans son donjon… » ou méta-succès « Bouftou Royal (Duo) »…). */
+const bossOf = (a: Ach): string | null => {
+  const m = /^Vaincre (?:le |la |les |l'|l’)?(.+?) dans son donjon/i.exec(a.d); if (m) return m[1];
+  const fromObj = (a.o ?? []).map(o => /^(.+?) \(/.exec(o)?.[1]).filter(Boolean) as string[];
+  return fromObj.length && fromObj.every(b => b === fromObj[0]) ? fromObj[0] : null;
+};
+/** Regroupe les succès d'un même boss à la place du premier, dans l'ordre d'origine. */
+function byBoss(items: Ach[]) {
+  const out: { key: string; boss: string | null; items: Ach[] }[] = []; const idx = new Map<string, number>();
+  for (const a of items) {
+    const b = bossOf(a); const k = b ? 'b:' + norm(b) : 'a:' + a.id;
+    if (idx.has(k)) out[idx.get(k)!].items.push(a); else { idx.set(k, out.length); out.push({ key: k, boss: b, items: [a] }); }
+  }
+  return out;
 }
 
 function Almost({ d, profileId, isDone }: { d: AchData; profileId: number; isDone: IsDone }) {
