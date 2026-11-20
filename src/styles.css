@@ -1475,3 +1475,6 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .gift-list li.done .gift-code { opacity: .5; text-decoration: line-through; }
 .gift-list .who img { width: 20px; height: 20px; border-radius: 50%; }
 .gift-form { display: grid; gap: 6px; margin: 8px 0; }
+.stuff-list li { flex-wrap: wrap; }
+.stuff-preview { flex-basis: 100%; margin-top: 6px; }
+.stuff-preview img { width: 100%; border-radius: 10px; border: 1px solid var(--world-border); display: block; }

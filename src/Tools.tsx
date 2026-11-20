@@ -15,6 +15,7 @@ const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors
 export function Tools({ profileId }: { profileId: number }) {
   const { list, online, add, remove } = useStuffs(profileId);
   const [name, setName] = useState(''); const [url, setUrl] = useState(''); const [err, setErr] = useState('');
+  const [preview, setPreview] = useState<string | null>(null);
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); setErr('');
     if (!name.trim()) return setErr('Donne un nom au stuff.');
@@ -65,7 +66,9 @@ export function Tools({ profileId }: { profileId: number }) {
                 <li key={s.id}>
                   <a href={s.url} target="_blank" rel="noreferrer">{s.name} ↗</a>
                   <small>{who?.name}{s.local ? ' · sur cet appareil' : ''}</small>
+                  <button onClick={() => setPreview(preview === s.id ? null : s.id)} title="Aperçu du stuff">{preview === s.id ? 'Masquer' : '👁 Aperçu'}</button>
                   <button onClick={() => void remove(s)} title="Supprimer">✕</button>
+                  {preview === s.id && <StuffPreview url={s.url} />}
                 </li>
               );
             })}
@@ -74,5 +77,18 @@ export function Tools({ profileId }: { profileId: number }) {
         </section>
       </div>
     </main>
+  );
+}
+
+/** Aperçu d'un stuff : capture de la page DofusBook (service de capture Microlink, chargée seulement à l'ouverture). */
+function StuffPreview({ url }: { url: string }) {
+  const [state, setState] = useState<'load' | 'ok' | 'err'>('load');
+  const src = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=4000&viewport.width=1400&viewport.height=1000`;
+  return (
+    <div className="stuff-preview">
+      {state === 'load' && <p className="meta small">Capture du stuff en cours… (quelques secondes)</p>}
+      {state === 'err' ? <p className="meta small">Aperçu indisponible pour l’instant. <a href={url} target="_blank" rel="noreferrer">Ouvrir sur DofusBook ↗</a></p>
+        : <a href={url} target="_blank" rel="noreferrer"><img src={src} alt="Aperçu du stuff" loading="lazy" onLoad={() => setState('ok')} onError={() => setState('err')} style={state === 'ok' ? undefined : { display: 'none' }} /></a>}
+    </div>
   );
 }
