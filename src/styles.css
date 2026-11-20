@@ -1458,4 +1458,8 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .job-crafts .lv { min-width: 92px; font-size: .85em; color: var(--muted); }
 .job-crafts strong { color: var(--world-accent); min-width: 54px; text-align: right; }
 .job-crafts li.done { opacity: .5; }
-.job-crafts li.done span:last-child { text-decoration: line-through; }
+.job-crafts li.done strong + span { text-decoration: line-through; }
+.job-lvl { display: flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; }
+.job-lvl select { padding: 4px 8px; border-radius: 8px; border: 1px solid var(--world-border); background: var(--panel2); color: var(--text); font-weight: 700; }
+.job-crafts .ing { display: block; color: var(--muted); font-size: .82em; }
+.job-crafts li.done .ing { text-decoration: none; }

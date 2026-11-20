@@ -7,7 +7,7 @@ import { useMemo, useRef, useState } from 'react';
 import { profiles } from './model/profiles';
 import { qtyOf, teamInfo, toggle } from './model/progress';
 import { loadAvail, setClaim, setMyAvail, useTeamLive } from './model/teamlive';
-import { ALL_JOB_RES, jobKey } from './model/jobs';
+import { allJobRes, jobKey, useJobLevels } from './model/jobs';
 import { ResIcon } from './Mates';
 import { dungeons, GAME_VERSION } from './data/jeu/donjons';
 import { useGoals } from './model/goals';
@@ -158,7 +158,8 @@ export function Harvest({ profileId }: { profileId: number }) {
   const { team } = teamInfo();
   const counted = profiles.filter(p => p.id === profileId || team[p.id]);
   const factor = profiles.length;
-  const rows = ALL_JOB_RES.map(x => {
+  useJobLevels();
+  const rows = allJobRes().map(x => {
     const k = jobKey(x.name); const need = x.qty * factor;
     const have = counted.reduce((s, p) => s + (qtyOf(p.id, k) ?? 0), 0);
     return { ...x, k, need, have, missing: Math.max(0, need - have), owner: claimOf(k) };

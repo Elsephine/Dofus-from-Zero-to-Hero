@@ -6,13 +6,14 @@ import { profiles } from './model/profiles';
 import { post } from './model/messages';
 import { Mates, OfferButton, ResIcon } from './Mates';
 
-import { ALL_JOB_RES, jobKey } from './model/jobs';
+import { allJobRes, jobItems, jobKey, jobLevel, levelChoices, palierEnd, setJobLevel, useJobLevels } from './model/jobs';
 import { ClaimButton } from './TeamLive';
-const ALL = ALL_JOB_RES;
 const key = jobKey;
-const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
 
 export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
+  useJobLevels();
+  const ALL = allJobRes();
+  const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
   const lsMult = `fzth:v2:jobMult:${profileId}`;
   const [tab, setTab] = useState('global');
   const [mult, setMultState] = useState<number>(() => { try { return Number(localStorage.getItem(lsMult)) || 1; } catch { return 1; } });
@@ -38,6 +39,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const doneToggle = (n: number) => n > 0 && (
     <label className="toggle show-done"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Voir les ressources déjà obtenues ({n})</label>);
   const job = jobs.find(j => j.name === tab);
+  const items = job ? jobItems(job) : [];
   const fmt = (q: number) => (q * mult).toLocaleString('fr-FR');
 
   const copy = async () => {
@@ -130,7 +132,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
       </div>
       <nav className="tabs always">
         <button className={tab === 'global' ? 'on' : ''} onClick={() => setTab('global')}>Tous les métiers</button>
-        {jobs.map(j => <button key={j.name} className={tab === j.name ? 'on' : ''} onClick={() => setTab(j.name)}>{j.name} <small>{j.target}</small></button>)}
+        {jobs.map(j => <button key={j.name} className={tab === j.name ? 'on' : ''} onClick={() => setTab(j.name)}>{j.name} <small>{jobLevel(j)}</small></button>)}
       </nav>
 
       {!job ? (
@@ -150,21 +152,27 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
       ) : (
         <section>
           <div className="detail-head">
-            <div><h3>{job.name} · niveau {job.target}</h3><p className="meta">{job.items.length} ressources distinctes pour ce métier</p></div>
+            <div><h3>{job.name} · niveau {jobLevel(job)}</h3><p className="meta">{items.length} ressource{items.length > 1 ? "s" : ""} distincte{items.length > 1 ? "s" : ""} jusqu’au niveau {jobLevel(job)}</p></div>
+            {levelChoices(job).length > 0 && <label className="job-lvl">Jusqu’au niveau <select value={jobLevel(job)} onChange={e => setJobLevel(job.name, Number(e.target.value))}>
+              {levelChoices(job).map(l => <option key={l} value={l}>{l}</option>)}
+            </select></label>}
           </div>
           <p className="notice">{job.note}</p>
-          {jobCrafts[job.name] && (
-            <details className="job-crafts" open>
-              <summary>🔨 Crafts à faire ({jobCrafts[job.name].filter((_, i) => isDone(profileId, `craft:${job.name}:${i}`)).length}/{jobCrafts[job.name].length} paliers)</summary>
-              <ul>{jobCrafts[job.name].map(([lv, item, n], i) => {
-                const id = `craft:${job.name}:${i}`; const ok = isDone(profileId, id);
-                return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => toggle(profileId, id)} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}</span></label></li>;
-              })}</ul>
-            </details>
-          )}
-          {doneToggle(job.items.filter(([n, q]) => finished(n, q)).length)}
-          <div className="res-grid">{job.items.filter(([n, q]) => showDone || !finished(n, q)).map(([n, q]) => row(n, q))}</div>
-          {!showDone && job.items.every(([n, q]) => finished(n, q)) && <p className="done-all">🎉 Tout est réuni pour ce métier !</p>}
+          {jobCrafts[job.name] && (() => {
+            const list = jobCrafts[job.name].map((c, i) => ({ c, i })).filter(x => palierEnd(x.c[0]) <= jobLevel(job));
+            return (
+              <details className="job-crafts" open>
+                <summary>🔨 Crafts à faire jusqu’au niveau {jobLevel(job)} ({list.filter(x => isDone(profileId, `craft:${job.name}:${x.i}`)).length}/{list.length} paliers)</summary>
+                <ul>{list.map(({ c: [lv, item, n, ing], i }) => {
+                  const id = `craft:${job.name}:${i}`; const ok = isDone(profileId, id);
+                  return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => toggle(profileId, id)} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}{ing?.length ? <small className="ing"> · {ing.map(([a, q]) => `${q * n} ${a}`).join(', ')}</small> : null}</span></label></li>;
+                })}</ul>
+              </details>
+            );
+          })()}
+          {doneToggle(items.filter(([n, q]) => finished(n, q)).length)}
+          <div className="res-grid">{items.filter(([n, q]) => showDone || !finished(n, q)).map(([n, q]) => row(n, q))}</div>
+          {!showDone && items.every(([n, q]) => finished(n, q)) && <p className="done-all">🎉 Tout est réuni pour ce métier !</p>}
         </section>
       )}
 

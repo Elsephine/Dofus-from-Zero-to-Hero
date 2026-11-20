@@ -19,7 +19,7 @@ import { favKey, repKey, repTodo } from './model/repeat';
 import { cachedRange, parisToday } from './model/almanax';
 import { GROUP_KEY, groupQuests, readGroupBy, type GroupBy } from './model/questGroups';
 import { iconInfo } from './model/icons';
-import { ALL_JOB_RES, jobKey } from './model/jobs';
+import { allJobRes, jobKey, useJobLevels } from './model/jobs';
 import { qtyOf, setQty, teamInfo } from './model/progress';
 import { useTeamLive, setClaim } from './model/teamlive';
 import { ResIcon } from './Mates';
@@ -194,7 +194,8 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
   const mult = (() => { try { return Number(localStorage.getItem(`fzth:v2:jobMult:${profileId}`)) || 1; } catch { return 1; } })();
   const counted = profiles.filter(p => p.id === profileId || team[p.id]);
   const factor = teamMode ? profiles.length : mult;
-  const rows = ALL_JOB_RES.map(x => {
+  useJobLevels();
+  const rows = allJobRes().map(x => {
     const k = jobKey(x.name); const need = x.qty * factor;
     const have = teamMode ? counted.reduce((s, p) => s + (qtyOf(p.id, k) ?? 0), 0) : qtyOf(profileId, k) ?? 0;
     return { ...x, k, need, have, missing: Math.max(0, need - have), mine: qtyOf(profileId, k) ?? 0, owner: claimOf(k) };
