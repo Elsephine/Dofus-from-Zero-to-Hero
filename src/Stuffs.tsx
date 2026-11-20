@@ -2,9 +2,9 @@
 // à la manière de DofusBook, avec le lien DofusBook en plus.
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ExternalLink, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { ExternalLink, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { profiles } from './model/profiles';
-import { useStuffs, type Stuff } from './model/stuffs';
+import { importDofusbook, useStuffs, type Stuff } from './model/stuffs';
 import { useResourceIcon } from './model/resourceIcons';
 
 type Equip = [number, string, number, string, number]; // id, nom, niveau, groupe, iconId
@@ -30,11 +30,13 @@ export function Stuffs({ profileId }: { profileId: number }) {
   const [name, setName] = useState(''); const [url, setUrl] = useState(''); const [err, setErr] = useState('');
   const shown = list.filter(s => (who === 'all' || s.profile_id === who) && norm(s.name).includes(norm(q.trim())));
   useEquip();
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault(); setErr('');
-    if (!name.trim()) return setErr('Donne un nom au stuff.');
-    if (url.trim() && !/^https:\/\/\S+$/.test(url.trim())) return setErr('Le lien doit commencer par https:// (ou laisse vide).');
-    void add(name.trim(), url.trim()); setName(''); setUrl(''); setAdding(false);
+  const [busy, setBusy] = useState(false); const [note, setNote] = useState('');
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setErr(''); setNote('');
+    if (!name.trim() && !url.trim()) return setErr('Colle un lien DofusBook ou donne un nom au stuff.');
+    if (url.trim() && !/^https:\/\/(www\.)?dofusbook\.net\//.test(url.trim())) return setErr('Le lien doit être un lien DofusBook (https://www.dofusbook.net/…).');
+    setBusy(true); const m = await add(name.trim(), url.trim()); setBusy(false);
+    setName(''); setUrl(''); setAdding(false); setNote(m);
   };
   const toggleCompact = () => { const v = !compact; setCompact(v); try { localStorage.setItem('fzth:v2:stuffCompact', v ? '1' : '0'); } catch { /* ignore */ } };
   return (
@@ -51,16 +53,17 @@ export function Stuffs({ profileId }: { profileId: number }) {
       </div>
       {adding && (
         <form className="panel stuff-form stuffs-add" onSubmit={submit}>
-          <input autoFocus value={name} onChange={e => setName(e.target.value)} maxLength={90} placeholder="Nom du stuff (ex. Feu / Terre)" />
-          <input value={url} onChange={e => setUrl(e.target.value)} type="url" placeholder="Lien DofusBook (facultatif)" />
-          <button className="primary" type="submit">Créer le stuff</button>
-          <p className="meta small">Ensuite, clique sur ✏️ pour choisir les objets case par case.</p>
+          <input autoFocus value={url} onChange={e => setUrl(e.target.value)} type="url" placeholder="Lien DofusBook (les objets sont importés tout seuls)" />
+          <input value={name} onChange={e => setName(e.target.value)} maxLength={90} placeholder="Nom (facultatif avec un lien : on reprend celui de DofusBook)" />
+          <button className="primary" type="submit" disabled={busy}>{busy ? 'Import en cours…' : 'Créer le stuff'}</button>
+          <p className="meta small">Sans lien, crée le stuff puis clique sur ✏️ pour choisir les objets case par case. Le stuff DofusBook doit être public.</p>
           {err && <p className="warn">{err}</p>}
         </form>
       )}
+      {note && <p className="meta small">{note}</p>}
       {online === false && <p className="meta small">Serveur injoignable : les changements restent sur cet appareil et seront partagés plus tard.</p>}
       <div className={'stuff-grid' + (compact ? ' compact' : '')}>
-        {shown.map(s => <StuffCard key={s.id} s={s} mine={s.profile_id === profileId} onSave={items => void setItems(s, items)}
+        {shown.map(s => <StuffCard key={s.id} s={s} profileId={profileId} onSave={items => void setItems(s, items)}
           onRemove={() => { if (confirm(`Supprimer « ${s.name} » ?`)) void remove(s); }} />)}
         {!shown.length && <p className="meta">{list.length ? 'Aucun stuff ne correspond.' : 'Aucun stuff : clique sur « Ajouter ».'}</p>}
       </div>
@@ -68,12 +71,20 @@ export function Stuffs({ profileId }: { profileId: number }) {
   );
 }
 
-function StuffCard({ s, onSave, onRemove }: { s: Stuff; mine: boolean; onSave: (items: Record<string, number>) => void; onRemove: () => void }) {
+const tried = new Set<string>();
+function StuffCard({ s, profileId, onSave, onRemove }: { s: Stuff; profileId: number; onSave: (items: Record<string, number>) => void; onRemove: () => void }) {
   const p = profiles.find(x => x.id === s.profile_id);
   const [edit, setEdit] = useState(false);
   const [pick, setPick] = useState<string | null>(null);
   const items = s.items ?? {};
   const empty = !Object.keys(items).length;
+  const [sync, setSync] = useState<'' | 'run' | 'err'>('');
+  const reimport = async () => {
+    if (!s.url) return; setSync('run');
+    try { const r = await importDofusbook(profileId, s.url); if (Object.keys(r.items ?? {}).length) onSave(r.items); setSync(''); } catch { setSync('err'); }
+  };
+  // Stuff avec un lien DofusBook mais encore vide (ancien stuff) : import automatique, une fois.
+  useEffect(() => { if (s.url && empty && !s.local && !tried.has(s.id)) { tried.add(s.id); void reimport(); } }, [s.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const setSlot = (slot: string, id: number | null) => { const n = { ...items }; if (id) n[slot] = id; else delete n[slot]; onSave(n); };
   const cell = (slot: string) => <Slot key={slot} slot={slot} id={items[slot]} edit={edit} onClick={() => edit && setPick(slot)} />;
   return (
@@ -81,6 +92,7 @@ function StuffCard({ s, onSave, onRemove }: { s: Stuff; mine: boolean; onSave: (
       <header>
         <strong title={s.name}>{s.name}</strong>
         <small>{p?.name}{s.local ? ' · sur cet appareil' : ''}</small>
+        {s.url && <button className={'icon-btn' + (sync === 'run' ? ' spin' : '')} onClick={() => void reimport()} title={sync === 'err' ? 'Import DofusBook impossible (stuff privé ?) · réessayer' : 'Réimporter depuis DofusBook'}><RefreshCw size={14} /></button>}
         {s.url && <a className="icon-btn" href={s.url} target="_blank" rel="noreferrer" title="Ouvrir sur DofusBook"><ExternalLink size={14} /></a>}
         <button className={'icon-btn' + (edit ? ' on' : '')} onClick={() => setEdit(!edit)} title={edit ? 'Terminer' : 'Choisir les objets'}>{edit ? '✓' : <Pencil size={14} />}</button>
         <button className="icon-btn" onClick={onRemove} title="Supprimer"><Trash2 size={14} /></button>
@@ -89,7 +101,7 @@ function StuffCard({ s, onSave, onRemove }: { s: Stuff; mine: boolean; onSave: (
         <div className="col">{LEFT.map(cell)}</div>
         <div className="mid">
           {p && <img className="stuff-hero" src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt={p.name} />}
-          {empty && !edit && <button className="stuff-empty" onClick={() => setEdit(true)}>✏️ Choisir les objets</button>}
+          {empty && !edit && (sync === 'run' ? <span className="stuff-empty">Import DofusBook…</span> : <button className="stuff-empty" onClick={() => setEdit(true)}>✏️ Choisir les objets</button>)}
           <div className="row">{MID.map(cell)}</div>
         </div>
         <div className="col">{RIGHT.map(cell)}</div>

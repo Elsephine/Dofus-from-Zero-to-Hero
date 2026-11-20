@@ -25,14 +25,23 @@ export function useStuffs(profileId: number) {
   };
   useEffect(() => { void refresh(); }, [profileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const add = async (name: string, url: string) => {
+  /** Crée un stuff ; avec un lien DofusBook, ses objets (et son nom s'il manque) sont importés automatiquement. */
+  const add = async (name: string, url: string): Promise<string> => {
     const code = codeFor(profileId);
+    let items: Record<string, number> = {}; let msg = '';
+    if (url) {
+      try { const r = await importDofusbook(profileId, url); items = r.items ?? {}; if (!name) name = r.name || 'Stuff DofusBook'; msg = Object.keys(items).length ? `✓ ${Object.keys(items).length} objets importés depuis DofusBook` : 'Aucun objet trouvé sur ce stuff DofusBook.'; }
+      catch (e) { msg = 'Import DofusBook impossible : ' + (e as Error).message; }
+    }
+    if (!name) name = 'Stuff';
     try {
-      await rpc('fzth_stuff_add', { p_profile: profileId, p_code: code, p_name: name, p_url: url });
+      const id = await rpc<string>('fzth_stuff_add', { p_profile: profileId, p_code: code, p_name: name, p_url: url });
+      if (Object.keys(items).length) await rpc('fzth_stuff_items', { p_profile: profileId, p_code: code, p_id: id, p_items: items });
       await refresh();
     } catch {
-      set([{ id: 'local-' + Date.now(), profile_id: profileId, name, url, created_at: new Date().toISOString(), local: true }, ...list]); setOnline(false);
+      set([{ id: 'local-' + Date.now(), profile_id: profileId, name, url, items, created_at: new Date().toISOString(), local: true }, ...list]); setOnline(false);
     }
+    return msg;
   };
   const remove = async (s: Stuff) => {
     if (s.local) { set(list.filter(x => x.id !== s.id)); return; }
@@ -47,4 +56,9 @@ export function useStuffs(profileId: number) {
     catch { setOnline(false); }
   };
   return { list, online, add, remove, setItems };
+}
+
+/** Lit un stuff public DofusBook (via le serveur du site) : nom, niveau et objets par case. */
+export async function importDofusbook(profileId: number, url: string) {
+  return rpc<{ name: string; level: number; class: number; items: Record<string, number> }>('fzth_dofusbook_import', { p_profile: profileId, p_code: codeFor(profileId), p_url: url });
 }
