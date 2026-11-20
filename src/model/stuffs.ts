@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { codeFor, rpc } from './progress';
 import { refreshNotifications } from './notifications';
 
-export interface Stuff { id: string; profile_id: number; name: string; url: string; created_at: string; local?: boolean }
+export interface Stuff { id: string; profile_id: number; name: string; url: string; created_at: string; items?: Record<string, number>; local?: boolean }
 const LS = 'fzth:v2:stuffs';
 const read = (): Stuff[] => { try { return JSON.parse(localStorage.getItem(LS) ?? '[]'); } catch { return []; } };
 const write = (l: Stuff[]) => { try { localStorage.setItem(LS, JSON.stringify(l)); } catch { /* ignore */ } };
@@ -39,5 +39,12 @@ export function useStuffs(profileId: number) {
     try { await rpc('fzth_stuff_delete', { p_profile: profileId, p_code: codeFor(profileId), p_id: s.id }); await refresh(); }
     catch { setOnline(false); }
   };
-  return { list, online, add, remove };
+  /** Enregistre les objets choisis case par case (partagés avec l'équipe). */
+  const setItems = async (s: Stuff, items: Record<string, number>) => {
+    set(list.map(x => x.id === s.id ? { ...x, items } : x));
+    if (s.local) return;
+    try { await rpc('fzth_stuff_items', { p_profile: profileId, p_code: codeFor(profileId), p_id: s.id, p_items: items }); }
+    catch { setOnline(false); }
+  };
+  return { list, online, add, remove, setItems };
 }
