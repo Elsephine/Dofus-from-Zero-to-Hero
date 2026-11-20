@@ -441,7 +441,7 @@ body.pip { margin: 0; }
 .clock label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
 .clock input, .clock select { font: inherit; padding: 5px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
 @media (max-width: 900px) {
-  .mainnav { grid-template-columns: repeat(8, 1fr); }
+  .mainnav { grid-template-columns: repeat(6, 1fr); }
   .mainnav button { font-size: 10px; }
   .msg { max-width: 92%; }
 }
@@ -974,7 +974,7 @@ body[data-theme="dark"] { background-image: radial-gradient(ellipse at top, var(
 .toasts { z-index: 95 !important; }
 .page-fade > * { animation-fill-mode: backwards !important; }
 /* En-tête trop large entre 900 et 1680 px : menu en icônes seules (le nom reste en info-bulle). */
-@media (max-width: 1680px) and (min-width: 901px) { .mainnav .lbl { display: none; } .mainnav .ic { margin: 0; } .mainnav button { padding: 6px 9px; } }
+@media (max-width: 1320px) and (min-width: 901px) { .mainnav .lbl { display: none; } .mainnav .ic { margin: 0; } .mainnav button { padding: 6px 9px; } }
 .top { flex-wrap: wrap; }
 
 /* ===== Page d'un Dofus, mise en page « Tougli » ===== */
@@ -1305,3 +1305,49 @@ body[data-theme="dark"] .perso-backdrop { opacity: .8 !important; }
 :root { --panel: rgba(255, 252, 250, .66) !important; --panel2: rgba(255, 255, 255, .7); }
 body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rgba(43, 30, 33, .74); }
 @media (max-width: 900px) { .perso-backdrop { opacity: .4 !important; width: 100vw; } }
+
+/* ===== Aujourd'hui ===== */
+.today { display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+.today-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.t-card { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--panel2); border: 1px solid var(--line); min-width: 0; }
+.t-card h3 { display: flex; align-items: center; gap: 8px; font: 700 16px var(--title-font); color: var(--world-accent); margin: 0; }
+.t-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.t-resume { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 8px; border-radius: 10px; background: none; border: 1px solid transparent; }
+.t-resume:hover { border-color: var(--egg); background: color-mix(in srgb, var(--egg) 10%, transparent); }
+.t-resume span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.t-resume strong { font-size: 14px; } .t-resume strong small { color: var(--muted); font-weight: 500; }
+.t-resume em, .t-check em, .t-alm em { font-size: 12px; color: var(--muted); font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-resume > svg { color: var(--muted); flex: none; }
+.t-check, .t-alm { display: flex; align-items: center; gap: 10px; padding: 5px 6px; border-radius: 8px; cursor: pointer; }
+.t-check:hover, .t-alm:hover { background: rgb(var(--tint) / .05); }
+.t-check span, .t-alm span { display: flex; flex-direction: column; min-width: 0; }
+.t-check strong, .t-alm strong { font-size: 14px; font-weight: 600; }
+.t-list li.done, .t-alm.done { opacity: .5; } .t-list li.done strong, .t-alm.done strong { text-decoration: line-through; }
+.t-alm img { width: 40px; height: 40px; object-fit: contain; }
+.t-bonus { margin: 0; font-size: 12.5px; color: var(--muted); } .t-bonus b { color: var(--text); margin-right: 4px; }
+.t-more { margin-top: auto; align-self: flex-start; font-size: 12.5px !important; color: var(--world-accent) !important; text-decoration: none !important; }
+.dofus-grid { display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 1100px) { .today-grid { grid-template-columns: 1fr; } }
+
+/* Overlay « Aujourd'hui » */
+.ov-tabs button { font-size: 12px; }
+.ov-day { gap: 8px; }
+.ov-day-head { display: flex; align-items: center; gap: 8px; }
+.ov-day-head img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: 50% 15%; border: 2px solid var(--world-accent); }
+.ov-block { padding: 8px 10px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); flex: none; }
+.ov-block h4 { margin: 0 0 6px; font: 700 13px var(--title-font); color: var(--world-accent); display: flex; align-items: center; gap: 6px; }
+.ov-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.ov-checks label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.ov-checks small { margin-left: auto; font-size: 10px; color: var(--muted); }
+.ov-checks li.done { opacity: .5; text-decoration: line-through; }
+.ov-alm { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.ov-alm img { width: 32px; height: 32px; object-fit: contain; }
+.ov-alm span { display: flex; flex-direction: column; } .ov-alm small { font-size: 11px; color: var(--muted); }
+.ov-alm.done { opacity: .5; text-decoration: line-through; }
+.ov-resume { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.ov-resume button { display: flex; align-items: center; gap: 6px; padding: 4px 6px; text-align: left; font-size: 12px; border-radius: 8px; }
+.ov-resume img { width: 26px; height: 26px; object-fit: contain; }
+.ov-resume span { display: flex; flex-direction: column; min-width: 0; } .ov-resume small { color: var(--muted); font-size: 10px; }
+.t-resume { justify-content: flex-start; }
+.t-resume .egg-ring { flex: none; }
+.ov-checks li { border: none !important; background: none !important; padding: 2px 0 !important; }

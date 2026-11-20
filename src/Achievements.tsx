@@ -11,7 +11,7 @@ import { profiles } from './model/profiles';
 import { teamInfo, toggle } from './model/progress';
 import { DungeonAchievements } from './TeamLive';
 
-const TABS: [string, string, typeof ScrollText][] = [['all', 'Tous les succès', ScrollText], ['almost', 'Presque finis', Hourglass], ['dj', 'Donjons', Castle], ['rank', 'Classement', Medal], ['alerts', 'À ne pas rater', AlarmClock]];
+const TABS: [string, string, typeof ScrollText][] = [['all', 'Tous les succès', ScrollText], ['almost', 'Presque finis', Hourglass], ['dj', 'Donjons', Castle], ['alerts', 'À ne pas rater', AlarmClock]];
 const CAT_ICON: Record<string, typeof Star> = { 'Général': Star, 'Exploration': Compass, 'Donjons': Castle, 'Monstres': Skull, 'Quêtes': BookOpen, 'Métiers': Hammer, 'Élevage': PawPrint,
   'Événements': PartyPopper, 'Kolizéum': Swords, 'Anomalies Temporelles': Clock4, 'Songes Infinis': Moon, 'Guilde': Shield, 'Compagnons': Users };
 const catIcon = (name: string) => CAT_ICON[name] ?? Gem;
@@ -20,7 +20,7 @@ const medal = (pct: number) => pct >= 90 ? 'gold' : pct >= 50 ? 'silver' : pct >
 const avatar = (img: string) => `${import.meta.env.BASE_URL}persos/${img}`;
 
 export function Achievements({ profileId, isDone }: { profileId: number; isDone: IsDone }) {
-  const [tab, setTab] = useState(() => { try { return localStorage.getItem('fzth:v2:achTab') ?? 'all'; } catch { return 'all'; } });
+  const [tab, setTab] = useState(() => { try { const t = localStorage.getItem('fzth:v2:achTab') ?? 'all'; return t === 'rank' ? 'all' : t; } catch { return 'all'; } });
   const pick = (t: string) => { setTab(t); try { localStorage.setItem('fzth:v2:achTab', t); } catch { /* ignore */ } };
   const d = useAchData();
   const mine = d && pointsOf(d, profileId, isDone);
@@ -36,7 +36,6 @@ export function Achievements({ profileId, isDone }: { profileId: number; isDone:
           {tab === 'all' && d && <Catalogue d={d} profileId={profileId} isDone={isDone} />}
           {tab === 'almost' && d && <Almost d={d} profileId={profileId} isDone={isDone} />}
           {tab === 'dj' && <DungeonAchievements profileId={profileId} isDone={isDone} />}
-          {tab === 'rank' && d && <Ranking d={d} profileId={profileId} isDone={isDone} />}
           {tab === 'alerts' && d && <Alerts d={d} profileId={profileId} isDone={isDone} />}
         </div>
       )}
@@ -134,7 +133,7 @@ function Almost({ d, profileId, isDone }: { d: AchData; profileId: number; isDon
   );
 }
 
-function Ranking({ d, profileId, isDone }: { d: AchData; profileId: number; isDone: IsDone }) {
+export function Ranking({ d, profileId, isDone }: { d: AchData; profileId: number; isDone: IsDone }) {
   const { team } = teamInfo();
   const known = profiles.filter(p => p.id === profileId || team[p.id]);
   const tops = d.cats.filter(c => !c.parent);

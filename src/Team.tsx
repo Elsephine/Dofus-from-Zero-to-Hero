@@ -6,19 +6,25 @@ import { profiles } from './model/profiles';
 import { setShare, teamInfo } from './model/progress';
 import { iconInfo } from './model/icons';
 import { Goals } from './Goals';
-import { Availability, DungeonAchievements, Harvest, MemberStatus } from './TeamLive';
+import { Availability, Harvest, MemberStatus } from './TeamLive';
+import { CatchUp } from './CatchUp';
+import { Messages } from './Messages';
+import { Ranking } from './Achievements';
+import { useAchData } from './model/achievements';
+import { useMessages } from './model/messages';
 
 const GROUP = new Set(['combat-groupe', 'combat-vague-groupe', 'donjon', 'aide-personnes']);
 const isGroup = (i: ItemView) => !!i.dungeon?.name || (i.objectives ?? []).some(o => GROUP.has(o.type));
 
-const TABS: [string, string][] = [['goals', '🎯 Objectifs'], ['avail', '🗓 Disponibilités'], ['harvest', '🌾 Récolte'], ['ach', '🏆 Succès donjons'], ['progress', '📊 Progression']];
+// Même logique que le groupe en jeu : d'abord se caler les uns sur les autres, puis se parler, s'organiser.
+export const TEAM_TABS: [string, string][] = [['ensemble', '🤝 Jouer ensemble'], ['messages', '💬 Messages'], ['goals', '🎯 Objectifs'], ['avail', '🗓 Disponibilités'], ['harvest', '🌾 Récolte'], ['rank', '🏅 Classement'], ['progress', '📊 Progression par Dofus']];
 
-export function Team({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
+export function Team({ profileId, isDone, tab, onTab, onOpenDofus }: { profileId: number; isDone: (p: number, id: string) => boolean; tab: string; onTab: (t: string) => void; onOpenDofus: (id: string) => void }) {
+  const { unread } = useMessages();
+  const achD = useAchData();
   const { team, teamLoaded } = teamInfo();
   const [dofusId, setDofusId] = useState(() => { try { return localStorage.getItem('fzth:v2:teamDofus') ?? 'dom-de-pin'; } catch { return 'dom-de-pin'; } });
   const [onlyGroup, setOnlyGroup] = useState(true);
-  const [tab, setTabState] = useState<string>(() => { try { return localStorage.getItem('fzth:v2:teamTab') ?? 'goals'; } catch { return 'goals'; } });
-  const setTab = (t: string) => { setTabState(t); try { localStorage.setItem('fzth:v2:teamTab', t); } catch { /* ignore */ } };
   const [err, setErr] = useState('');
   const pick = (id: string) => { setDofusId(id); try { localStorage.setItem('fzth:v2:teamDofus', id); } catch { /* ignore */ } };
   // Membres visibles : moi + ceux qui partagent.
@@ -52,12 +58,14 @@ export function Team({ profileId, isDone }: { profileId: number; isDone: (p: num
       {err && <p className="warn">{err}</p>}
       <MemberStatus profileId={profileId} />
       <nav className="tabs always team-tabs">
-        {TABS.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
+        {TEAM_TABS.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => onTab(id)}>{label}{id === 'messages' && unread > 0 && <span className="badge inline">{unread}</span>}</button>)}
       </nav>
+      {tab === 'ensemble' && <CatchUp profileId={profileId} isDone={isDone} onOpenDofus={name => { const c = catalog.find(x => x.name === name); if (c) onOpenDofus(c.id); }} />}
+      {tab === 'messages' && <Messages profileId={profileId} />}
+      {tab === 'rank' && (achD ? <Ranking d={achD} profileId={profileId} isDone={isDone} /> : <span className="skeleton" />)}
       {tab === 'goals' && <Goals profileId={profileId} isDone={isDone} />}
       {tab === 'avail' && <Availability profileId={profileId} />}
       {tab === 'harvest' && <Harvest profileId={profileId} />}
-      {tab === 'ach' && <DungeonAchievements profileId={profileId} isDone={isDone} />}
       {tab === 'progress' && <>
       <h2 className="sub">Progression par Dofus</h2>
       {!teamLoaded && <p className="meta">Le partage passe par le serveur : il s’active une fois le site en ligne et synchronisé.</p>}

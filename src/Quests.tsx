@@ -1,6 +1,6 @@
 // Onglet Quêtes : répétables (journalières / hebdomadaires) et alignement de Bonta (100 quêtes + les 3 ordres).
 import { useMemo, useState } from 'react';
-import { CalendarClock, Repeat, Shield, Star } from 'lucide-react';
+import { CalendarClock, Egg, Repeat, Shield, Star } from 'lucide-react';
 import { bontaOrders, bontaQuests, repeatables, QUESTS_VERSION, type BontaOrder } from './data/jeu/quetes';
 import { questIds } from './model/achievements';
 import { burst } from './model/celebrate';
@@ -16,19 +16,20 @@ export const alignKey = (id: number) => `align:${id}`;
 export const alignDone = (p: number, q: { id: number; n: string }, isDone: IsDone) => isDone(p, alignKey(q.id)) || questIds(q.n).some(id => isDone(p, id));
 export const orderOf = (p: number, isDone: IsDone): BontaOrder | undefined => bontaOrders.find(o => isDone(p, `myorder:${o.key}`));
 
-export function Quests({ profileId, isDone }: { profileId: number; isDone: IsDone }) {
-  const [tab, setTab] = useState(() => { try { return localStorage.getItem('fzth:v2:questTab') ?? 'rep'; } catch { return 'rep'; } });
-  const pick = (t: string) => { setTab(t); try { localStorage.setItem('fzth:v2:questTab', t); } catch { /* ignore */ } };
+/** Journal de quêtes, comme en jeu : les Dofus (quêtes principales), les répétables, l'alignement. */
+export function Quests({ profileId, isDone, tab, onTab, dofusGrid }: { profileId: number; isDone: IsDone; tab: string; onTab: (t: string) => void; dofusGrid: React.ReactNode }) {
+  const pick = onTab;
   const todo = repTodo(repeatables, profileId, isDone).length;
   return (
     <main className="succes quests panel">
-      <div className="detail-head"><div><p className="eyebrow">À ne pas oublier</p><h2>Quêtes</h2></div></div>
+      <div className="detail-head"><div><p className="eyebrow">Journal de quêtes</p><h2>Quêtes</h2></div></div>
       <nav className="tabs always">
+        <button className={tab === 'dofus' ? 'on' : ''} onClick={() => pick('dofus')}><Egg size={15} /> Dofus</button>
         <button className={tab === 'rep' ? 'on' : ''} onClick={() => pick('rep')}><Repeat size={15} /> Répétables {todo > 0 && <span className="badge inline">{todo}</span>}</button>
         <button className={tab === 'align' ? 'on' : ''} onClick={() => pick('align')}><Shield size={15} /> Alignement Bonta</button>
       </nav>
-      {tab === 'rep' ? <Repeatables profileId={profileId} isDone={isDone} /> : <Alignment profileId={profileId} isDone={isDone} />}
-      <p className="meta small">Données du jeu Dofus Unity {QUESTS_VERSION} (données publiques dofusdude).</p>
+      {tab === 'dofus' ? dofusGrid : tab === 'rep' ? <Repeatables profileId={profileId} isDone={isDone} /> : <Alignment profileId={profileId} isDone={isDone} />}
+      {tab !== 'dofus' && <p className="meta small">Données du jeu Dofus Unity {QUESTS_VERSION} (données publiques dofusdude).</p>}
     </main>
   );
 }

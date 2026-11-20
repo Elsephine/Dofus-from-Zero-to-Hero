@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat } from 'lucide-react';
+import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight } from 'lucide-react';
 import { repeatables } from './data/jeu/quetes';
-import { repTodo } from './model/repeat';
+import { favKey, repKey, repTodo } from './model/repeat';
+import { cachedRange, fetchRange, parisToday } from './model/almanax';
 import { tagIcon } from './ui/QuestTags';
 import { GROUP_KEY, groupQuests, type GroupBy, type QuestGroup } from './model/questGroups';
 import { applyNow, forgetReopen, useOverlayState } from './model/overlayState';
@@ -19,7 +20,6 @@ import { iconInfo, type IconFamily } from './model/icons';
 import { requirements } from './model/requirements';
 const Tools = lazy(() => import('./Tools').then(m => ({ default: m.Tools })));
 import { Mates, OfferButton, ResIcon } from './Mates';
-const Messages = lazy(() => import('./Messages').then(m => ({ default: m.Messages })));
 import { onNewMessages, post as postMessage, useMessages, watchMessages } from './model/messages';
 import { Clock } from './Clock';
 import { GoalBanner } from './Goals';
@@ -45,10 +45,33 @@ const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
   return [v, (n: T) => { setV(n); try { localStorage.setItem(k, JSON.stringify(n)); } catch { /* ignore */ } }];
 };
 
+// ---------- Pages et adresses ----------
+// today · almanax · quetes/dofus · quetes/rep · quetes/align · <id d'un Dofus> · succes · jobs · team/<onglet> · tools
+const LEGACY: Record<string, string> = { home: 'today', team: 'team/ensemble', messages: 'team/messages', quetes: 'quetes/dofus' };
+const normView = (v: string) => LEGACY[v] ?? v;
+const fromHash = () => (location.hash.startsWith('#/') ? decodeURIComponent(location.hash.slice(2)) : null);
+/** Section du menu à laquelle appartient une page (une page de Dofus est rangée dans « Quêtes », comme en jeu). */
+export const sectionOf = (v: string) => v === 'today' || v === 'almanax' ? 'today' : v.startsWith('team') ? 'team' : ['succes', 'jobs', 'tools'].includes(v) ? v : 'quetes';
+function useRoute(): [string, (v: string) => void] {
+  const [view, setState] = useState(() => {
+    const h = fromHash(); if (h) return normView(h);
+    let v = 'today'; try { v = normView(JSON.parse(localStorage.getItem('fzth:v2:view') ?? '"today"')); } catch { /* ignore */ }
+    if (location.hash !== '#overlay') history.replaceState(null, '', '#/' + v);
+    return v;
+  });
+  useEffect(() => {
+    const on = () => { const h = fromHash(); if (h) setState(normView(h)); };
+    window.addEventListener('hashchange', on); return () => window.removeEventListener('hashchange', on);
+  }, []);
+  useEffect(() => { try { localStorage.setItem('fzth:v2:view', JSON.stringify(view)); } catch { /* ignore */ } document.querySelector('.page-fade')?.scrollTo?.(0, 0); window.scrollTo(0, 0); }, [view]);
+  const go = (v: string) => { v = normView(v); if (fromHash() !== v) location.hash = '/' + v; else setState(v); };
+  return [view, go];
+}
+
 export function App() {
   const { status, lastSync, pendingCount, isDone } = useProgress();
   const [active, setActive] = remember<number | null>('fzth:v2:active', null);
-  const [view, setView] = remember<string>('fzth:v2:view', 'home');
+  const [view, setView] = useRoute();
   const [hideDone, setHideDone] = remember<boolean>('fzth:v2:hideDone', false);
   const [asking, setAsking] = useState<number | null>(null);
   const profile = active !== null && isUnlocked(active) ? profiles.find(p => p.id === active) : undefined;
@@ -62,12 +85,12 @@ export function App() {
   useEffect(() => { watchNotifications(profile?.id ?? null); watchMessages(profile?.id ?? null); watchGoals(profile?.id ?? null); watchTeamLive(profile?.id ?? null); }, [profile?.id]);
   // Page affichée, visible par les coéquipiers (« Volrod · Dofus Cauchemar »).
   useEffect(() => {
-    const labels: Record<string, string> = { home: 'Accueil', jobs: 'Métiers', team: 'Équipe', almanax: 'Almanax', messages: 'Messages', tools: 'Outils', succes: 'Succès', quetes: 'Quêtes' };
-    setPresencePage(labels[view] ?? dofusInfo.find(d => d.id === view)?.name ?? 'Site');
+    const labels: Record<string, string> = { today: 'Aujourd’hui', jobs: 'Métiers', almanax: 'Almanax', 'team/messages': 'Messages', tools: 'Outils', succes: 'Succès', 'quetes/dofus': 'Quêtes · Dofus', 'quetes/rep': 'Quêtes répétables', 'quetes/align': 'Alignement' };
+    setPresencePage(labels[view] ?? dofusInfo.find(d => d.id === view)?.name ?? (view.startsWith('team') ? 'Équipe' : 'Site'));
   }, [view]);
   // Nouveaux messages des autres : message éphémère (+ notification du navigateur si autorisée), sauf si on est déjà sur la messagerie.
   useEffect(() => { const off = onNewMessages(ms => {
-    if (view === 'messages') return;
+    if (view === 'team/messages') return;
     pushToasts(ms.map(m => ({ id: 'msg-' + m.id, kind: 'msg' as const, cat: m.kind === 'done' ? 'news' as const : m.kind === 'text' ? 'chat' as const : 'trade' as const, who: m.profile_id, at: m.created_at, text: `${profiles.find(p => p.id === m.profile_id)?.name} : ${m.body}` })));
   }); return () => { off(); }; }, [view]);
   // Annonce automatique quand un Dofus vient d'être terminé.
@@ -85,7 +108,7 @@ export function App() {
   // Fenêtre overlay séparée (navigateurs sans mini-fenêtre) : #overlay
   if (location.hash === '#overlay' && profile) return <Suspense fallback={null}><OverlayView profileId={profile.id} /></Suspense>;
 
-  const open = (pid: number) => { if (isUnlocked(pid)) { setActive(pid); setView('home'); } else setAsking(pid); };
+  const open = (pid: number) => { if (isUnlocked(pid)) { setActive(pid); setView('today'); } else setAsking(pid); };
 
   if (!profile) {
     return (
@@ -101,7 +124,7 @@ export function App() {
             </button>
           ))}
         </section>
-        {asking !== null && <CodeDialog profileId={asking} onClose={() => setAsking(null)} onOk={() => { setActive(asking); setView('home'); setAsking(null); }} />}
+        {asking !== null && <CodeDialog profileId={asking} onClose={() => setAsking(null)} onOk={() => { setActive(asking); setView('today'); setAsking(null); }} />}
       </div>
     );
   }
@@ -110,16 +133,20 @@ export function App() {
     <div className="app">
       <div className="perso-backdrop" aria-hidden style={{ backgroundImage: `url(${import.meta.env.BASE_URL}persos/${profile.image})` }} />
       <header className="top" style={{ '--hero': `url(${import.meta.env.BASE_URL}persos/${profile.image})` } as React.CSSProperties}>
-        <h1><button className="home-link" onClick={() => setView('home')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
+        <h1><button className="home-link" onClick={() => setView('today')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
         <nav className="mainnav">
-          <button className={!['tools', 'jobs', 'almanax', 'team', 'messages', 'succes', 'quetes'].includes(view) ? 'on' : ''} title="Dofus" onClick={() => setView('home')}><span className="ic"><Egg /></span><span className="lbl">Dofus</span></button>
-          <button className={view === 'jobs' ? 'on' : ''} title="Métiers & ressources" onClick={() => setView('jobs')}><span className="ic"><Hammer /></span><span className="lbl">Métiers</span></button>
-          <button className={view === 'quetes' ? 'on' : ''} title="Quêtes répétables et alignement" onClick={() => setView('quetes')}><span className="ic"><Repeat />{repLeft > 0 && <span className="badge">{repLeft}</span>}</span><span className="lbl">Quêtes</span></button>
-          <button className={view === 'succes' ? 'on' : ''} title="Succès" onClick={() => setView('succes')}><span className="ic"><Trophy /></span><span className="lbl">Succès</span></button>
-          <button className={view === 'team' ? 'on' : ''} title="Équipe" onClick={() => setView('team')}><span className="ic"><Users /></span><span className="lbl">Équipe</span></button>
-          <button className={view === 'almanax' ? 'on' : ''} title="Almanax" onClick={() => setView('almanax')}><span className="ic"><CalendarDays /></span><span className="lbl">Almanax</span></button>
-          <button className={view === 'messages' ? 'on' : ''} title="Messages" onClick={() => setView('messages')}><span className="ic"><MessageCircle />{unread > 0 && <span className="badge">{unread}</span>}</span><span className="lbl">Messages</span></button>
-          <button className={view === 'tools' ? 'on' : ''} title="Outils" onClick={() => setView('tools')}><span className="ic"><Wrench /></span><span className="lbl">Outils</span></button>
+          {([
+            ['today', 'today', 'Aujourd’hui', 'Ce qu’on fait en se connectant : répétables, Almanax, reprise', <Sun key="i" />, repLeft],
+            ['quetes', view.startsWith('quetes') ? view : 'quetes/dofus', 'Quêtes', 'Journal de quêtes : Dofus, répétables, alignement', <ScrollText key="i" />, 0],
+            ['succes', 'succes', 'Succès', 'Succès du jeu', <Trophy key="i" />, 0],
+            ['jobs', 'jobs', 'Métiers', 'Métiers & ressources', <Hammer key="i" />, 0],
+            ['team', view.startsWith('team') ? view : 'team/ensemble', 'Équipe', 'Le groupe : jouer ensemble, messages, objectifs…', <Users key="i" />, unread],
+            ['tools', 'tools', 'Outils', 'Chasse au trésor, solveurs, stuffs', <Wrench key="i" />, 0],
+          ] as [string, string, string, string, JSX.Element, number][]).map(([sec, target, label, title, icon, badge]) => (
+            <button key={sec} className={sectionOf(view) === sec ? 'on' : ''} title={title} onClick={() => setView(sectionOf(view) === sec && sec !== 'today' ? (sec === 'quetes' ? 'quetes/dofus' : sec === 'team' ? 'team/ensemble' : sec) : target)}>
+              <span className="ic">{icon}{badge > 0 && <span className="badge">{badge}</span>}</span><span className="lbl">{label}</span>
+            </button>
+          ))}
         </nav>
         <SearchBox profileId={profile.id} isDone={isDone} onOpenDofus={id => setView(id)} />
         <OnlineNow profileId={profile.id} />
@@ -132,7 +159,7 @@ export function App() {
       </header>
       <ShareBanner profileId={profile.id} />
       <OverlayBanner profileId={profile.id} />
-      {view !== 'team' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team')} />}
+      {view !== 'team/goals' && <GoalBanner profileId={profile.id} isDone={isDone} onOpen={() => setView('team/goals')} />}
       <Toasts />
       <TrophyModal />
       <ReportDialog profileId={profile.id} />
@@ -140,14 +167,20 @@ export function App() {
 
       <Suspense fallback={<div className="panel page-loading"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div>}>
       <div key={view} className="page-fade">
-      {view === 'quetes' ? <Quests profileId={profile.id} isDone={isDone} /> : view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} /> : view === 'messages' ? <Messages profileId={profile.id} /> : view === 'team' ? <Team profileId={profile.id} isDone={isDone} /> : view === 'tools' ? <Tools profileId={profile.id} /> : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} /> : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} /> : info
-        ? (
+      {view === 'today' ? <Today profileId={profile.id} isDone={isDone} onOpen={setView} />
+        : view === 'almanax' ? <Almanax profileId={profile.id} isDone={isDone} />
+        : view.startsWith('quetes/') ? <Quests profileId={profile.id} isDone={isDone} tab={view.slice(7)} onTab={t => setView('quetes/' + t)} dofusGrid={<DofusGrid profileId={profile.id} isDone={isDone} onOpen={setView} />} />
+        : view === 'succes' ? <Achievements profileId={profile.id} isDone={isDone} />
+        : view.startsWith('team') ? <Team profileId={profile.id} isDone={isDone} tab={view.slice(5) || 'ensemble'} onTab={t => setView('team/' + t)} onOpenDofus={setView} />
+        : view === 'tools' ? <Tools profileId={profile.id} />
+        : view === 'jobs' ? <Jobs profileId={profile.id} isDone={isDone} />
+        : info ? (
           <div className="with-rail">
-            <DofusPage key={info.id} info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('home')} />
+            <DofusPage key={info.id} info={info} raw={catalog.find(c => c.id === info.id)} profileId={profile.id} hideDone={hideDone} setHideDone={setHideDone} isDone={isDone} onBack={() => setView('quetes/dofus')} />
             <DofusRail current={info.id} profileId={profile.id} isDone={isDone} onOpen={setView} />
           </div>
         )
-        : <Home profileId={profile.id} isDone={isDone} onOpen={setView} />}
+        : <Today profileId={profile.id} isDone={isDone} onOpen={setView} />}
       </div>
       </Suspense>
     </div>
@@ -202,7 +235,6 @@ function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone:
   // Dofus le plus proche de la fin parmi ceux commencés
   const doing = catalog.map(raw => { const v = viewFor(raw, profileId, isDone); const left = v.sections.flatMap(s => s.items).filter(i => !isDone(profileId, i.id)); return { raw, v, left }; })
     .filter(x => x.left.length && x.left.length < x.v.itemIds.length).sort((a, b) => a.left.length - b.left.length);
-  const close = doing[0];
   // Donjon de la prochaine quête d'un Dofus en cours
   let dj: { name: string; left: number; key?: string; dofus: string } | null = null;
   for (const x of doing) {
@@ -213,18 +245,13 @@ function NextActions({ profileId, isDone, onOpen }: { profileId: number; isDone:
   const almost = d ? almostDone(d, profileId, isDone)[0] : undefined;
   const ev = d ? eventStatus(d, profileId, isDone).find(x => x.days <= 30 && x.left.length) : undefined;
   const cards: JSX.Element[] = [];
-  if (close) cards.push(<button key="dofus" className="next-card" onClick={() => onOpen(close.raw.id)}><span className="nc-ic"><Egg /></span><span><small>Dofus le plus proche</small><strong>{close.raw.name} : plus que {close.left.length} étape{close.left.length > 1 ? 's' : ''}</strong><em>Prochaine : {close.left[0].name}</em></span></button>);
   if (dj) cards.push(<button key="dj" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic"><Castle /></span><span><small>Donjon à préparer</small><strong>{dj.name}</strong><em>{dj.left} succès à cumuler en équipe{dj.key ? ` · 🗝 ${dj.key}` : ''}</em></span></button>);
   if (almost) cards.push(<button key="ach" className="next-card" onClick={() => onOpen('succes')}><span className="nc-ic"><Trophy /></span><span><small>Succès presque fini</small><strong>{almost.a.n}</strong><em>{almost.done}/{almost.total} objectifs · {almost.a.p} pts</em></span></button>);
   if (ev) cards.push(<button key="ev" className="next-card hot" onClick={() => onOpen('succes')}><span className="nc-ic"><AlarmClock /></span><span><small>{ev.days === 0 ? 'C’est la période' : `Dans ~${ev.days} jours`}</small><strong>Événement {ev.e.label}</strong><em>{ev.left.length} succès · {ev.pts} pts à prendre</em></span></button>);
-  const rep = repTodo(repeatables, profileId, isDone);
-  const hasFav = repeatables.some(q => isDone(profileId, `repfav:${q.id}`));
-  if (rep.length) cards.unshift(<button key="rep" className="next-card hot" onClick={() => onOpen('quetes')}><span className="nc-ic"><Repeat /></span><span><small>À ne pas oublier</small><strong>{rep.length} quête{rep.length > 1 ? 's' : ''} répétable{rep.length > 1 ? 's' : ''} à faire</strong><em>{rep.slice(0, 2).map(q => q.n).join(' · ')}{rep.length > 2 ? '…' : ''}</em></span></button>);
-  else if (!hasFav) cards.push(<button key="rep" className="next-card" onClick={() => onOpen('quetes')}><span className="nc-ic"><Repeat /></span><span><small>Quêtes répétables</small><strong>Choisis celles que tu fais</strong><em>Elles seront rappelées ici chaque jour</em></span></button>);
-  cards.push(<button key="alm" className="next-card" onClick={() => onOpen('almanax')}><span className="nc-ic"><CalendarDays /></span><span><small>Chaque jour</small><strong>Offrande Almanax</strong><em>Voir l’offrande et le bonus du jour</em></span></button>);
+  if (!cards.length) return null;
   return (
     <section className="next-actions">
-      <h3><Lightbulb size={18} /> Aujourd’hui, je te propose <button className="link-like" onClick={() => setHidden(today)}>masquer pour aujourd’hui</button></h3>
+      <h3><Lightbulb size={18} /> À préparer <button className="link-like" onClick={() => setHidden(today)}>masquer pour aujourd’hui</button></h3>
       <div className="next-grid">{cards}</div>
     </section>
   );
@@ -408,7 +435,8 @@ function TeamStrip({ profileId, isDone }: { profileId: number; isDone: (p: numbe
   );
 }
 
-function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
+/** Grille de tous les Dofus (Quêtes → Dofus). */
+function DofusGrid({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
   const [filter, setFilter] = remember<'all' | 'doing' | 'todo' | 'done'>('fzth:v2:homeFilter', 'all');
   const stats = dofusInfo.map(d => {
     const raw = catalog.find(x => x.id === d.id);
@@ -421,10 +449,7 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
   const finished = stats.filter(x => x.state === 'done').length;
   const FILTERS: [typeof filter, string][] = [['all', 'Tous'], ['doing', 'En cours'], ['todo', 'Pas commencés'], ['done', 'Terminés']];
   return (
-    <main className="home panel">
-      <TeamStrip profileId={profileId} isDone={isDone} />
-      <CatchUp profileId={profileId} isDone={isDone} onOpenDofus={name => { const c = catalog.find(x => x.name === name); if (c) onOpen(c.id); }} />
-      <NextActions profileId={profileId} isDone={isDone} onOpen={onOpen} />
+    <section className="home dofus-grid">
       <div className="home-head">
         <h2>Tous les Dofus <small>{finished}/{catalog.length} terminés</small></h2>
         <div className="row">{FILTERS.map(([k, l]) => <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{l} <small>{k === 'all' ? stats.length : stats.filter(x => x.state === k).length}</small></button>)}</div>
@@ -440,6 +465,75 @@ function Home({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: nu
           );
         })}
       </div>
+    </section>
+  );
+}
+
+/** « Aujourd'hui » : ce qu'on fait en se connectant, dans l'ordre d'une session de jeu. */
+function Today({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: number, id: string) => boolean; onOpen: (id: string) => void }) {
+  // Reprendre : les Dofus commencés, les plus avancés d'abord.
+  const doing = catalog.map(raw => {
+    const v = viewFor(raw, profileId, isDone); const done = v.itemIds.filter(id => isDone(profileId, id)).length;
+    return { raw, v, done, pct: v.itemIds.length ? Math.round((done / v.itemIds.length) * 100) : 0, next: v.sections.flatMap(x => x.items).find(i => !isDone(profileId, i.id)) };
+  }).filter(x => x.done > 0 && x.pct < 100).sort((a, b) => b.pct - a.pct).slice(0, 3);
+  const favs = repeatables.filter(q => isDone(profileId, favKey(q)));
+  const repLeft = repTodo(repeatables, profileId, isDone);
+  // Almanax du jour (gardé dans le navigateur, rechargé si besoin).
+  const [alm, setAlm] = useState(() => cachedRange(parisToday(), 1)[0]);
+  useEffect(() => {
+    if (alm) return;
+    let lvl = 200; try { lvl = Number(localStorage.getItem(`fzth:v2:almLevel:${profileId}`)) || 200; } catch { /* ignore */ }
+    void fetchRange(parisToday(), 1, lvl).then(d => setAlm(d[0])).catch(() => {});
+  }, [alm, profileId]);
+  const offered = alm ? isDone(profileId, `alm-done:${alm.date}`) : false;
+  return (
+    <main className="today panel">
+      <TeamStrip profileId={profileId} isDone={isDone} />
+      <div className="today-grid">
+        <section className="t-card">
+          <h3><Egg size={17} /> Reprendre</h3>
+          {doing.length ? <ul className="t-list">{doing.map(x => {
+            const di = dofusInfo.find(d => d.id === x.raw.id);
+            return (
+              <li key={x.raw.id}>
+                <button className="t-resume" onClick={() => onOpen(x.raw.id)} style={{ '--egg': eggColor(di?.image) } as React.CSSProperties}>
+                  {di?.image && <EggRing src={img(di.image)!} image={di.image} pct={x.pct} size={46} stroke={4} />}
+                  <span><strong>{x.raw.name} <small>{x.pct} %</small></strong><em>Prochaine : {x.next?.name}</em></span>
+                  <ArrowRight size={16} />
+                </button>
+              </li>
+            );
+          })}</ul> : <p className="meta">Aucun Dofus commencé. <button className="link-like" onClick={() => onOpen('quetes/dofus')}>Choisir un Dofus</button></p>}
+          <button className="link-like t-more" onClick={() => onOpen('quetes/dofus')}>Tous les Dofus →</button>
+        </section>
+        <section className="t-card">
+          <h3><Repeat size={17} /> Répétables du jour {repLeft.length > 0 && <span className="badge inline">{repLeft.length}</span>}</h3>
+          {favs.length ? <ul className="t-list">{favs.map(q => {
+            const done = isDone(profileId, repKey(q));
+            return (
+              <li key={q.id} className={done ? 'done' : ''}>
+                <label className="t-check"><input type="checkbox" checked={done} onChange={e => { if (!done) burst(e.currentTarget); toggle(profileId, repKey(q)); }} />
+                  <span><strong>{q.n}</strong><em>{q.f === 'j' ? 'chaque jour' : 'chaque semaine'} · {q.z}</em></span></label>
+              </li>
+            );
+          })}</ul> : <p className="meta">Mets une ⭐ aux quêtes répétables que tu fais : elles apparaîtront ici chaque jour.</p>}
+          <button className="link-like t-more" onClick={() => onOpen('quetes/rep')}>{favs.length ? 'Gérer mes répétables →' : 'Choisir mes répétables →'}</button>
+        </section>
+        <section className="t-card">
+          <h3><CalendarDays size={17} /> Almanax du jour</h3>
+          {alm ? <>
+            <label className={`t-alm${offered ? ' done' : ''}`}>
+              <input type="checkbox" checked={offered} onChange={e => { if (!offered) burst(e.currentTarget); toggle(profileId, `alm-done:${alm.date}`); }} />
+              {alm.tribute.item.image_urls?.icon && <img src={alm.tribute.item.image_urls.icon} alt="" />}
+              <span><strong>{alm.tribute.quantity} × {alm.tribute.item.name}</strong><em>Offrande à Théodoran Ax</em></span>
+            </label>
+            <p className="t-bonus"><b>{alm.bonus.type.name}</b> {alm.bonus.description}</p>
+          </> : <p className="meta">Almanax indisponible hors ligne pour l’instant.</p>}
+          <button className="link-like t-more" onClick={() => onOpen('almanax')}>Calendrier Almanax →</button>
+        </section>
+      </div>
+      <NextActions profileId={profileId} isDone={isDone} onOpen={onOpen} />
+      <CatchUp profileId={profileId} isDone={isDone} onOpenDofus={name => { const c = catalog.find(x => x.name === name); if (c) onOpen(c.id); }} />
     </main>
   );
 }

@@ -9,6 +9,9 @@ import { profiles } from './model/profiles';
 import { sync, toggle, useProgress } from './model/progress';
 import { overlayClosed, overlayOpened } from './model/overlayState';
 import { achKey, useAchData } from './model/achievements';
+import { repeatables } from './data/jeu/quetes';
+import { favKey, repKey, repTodo } from './model/repeat';
+import { cachedRange, parisToday } from './model/almanax';
 import { GROUP_KEY, groupQuests, readGroupBy, type GroupBy } from './model/questGroups';
 import { iconInfo } from './model/icons';
 import { ALL_JOB_RES, jobKey } from './model/jobs';
@@ -17,13 +20,15 @@ import { useTeamLive, setClaim } from './model/teamlive';
 import { ResIcon } from './Mates';
 
 const LS = 'fzth:v2:overlayDofus';
+type Mode = 'jour' | 'quetes' | 'ressources';
 const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors.html';
 
 export function OverlayView({ profileId }: { profileId: number }) {
   const { isDone, status } = useProgress();
   useEffect(() => { if (location.hash !== '#overlay') return; const t = setInterval(() => void sync(), 5000); return () => clearInterval(t); }, []);
-  const [mode, setModeState] = useState<'quetes' | 'ressources'>(() => { try { return (localStorage.getItem('fzth:v2:overlayMode') as 'ressources') ?? 'quetes'; } catch { return 'quetes'; } });
-  const setMode = (m: 'quetes' | 'ressources') => { setModeState(m); try { localStorage.setItem('fzth:v2:overlayMode', m); } catch { /* ignore */ } };
+  const [mode, setModeState] = useState<Mode>(() => { try { return (localStorage.getItem('fzth:v2:overlayMode') as Mode) ?? 'quetes'; } catch { return 'quetes'; } });
+  const setMode = (m: Mode) => { setModeState(m); try { localStorage.setItem('fzth:v2:overlayMode', m); } catch { /* ignore */ } };
+  if (mode === 'jour') return <OverlayDay profileId={profileId} isDone={isDone} status={status} onMode={setMode} />;
   if (mode === 'ressources') return <OverlayResources profileId={profileId} status={status} onMode={setMode} />;
   return <OverlayQuests profileId={profileId} isDone={isDone} status={status} onMode={setMode} />;
 }
@@ -34,17 +39,57 @@ function NoPipNotice() {
   return <p className="ov-warn">⚠ Ce navigateur ne peut pas garder cette fenêtre au premier plan. Ouvre le site dans <strong>Chrome ou Edge sur ordinateur</strong> pour avoir l’overlay toujours visible au-dessus de Dofus.</p>;
 }
 
-function ModeTabs({ mode, onMode }: { mode: 'quetes' | 'ressources'; onMode: (m: 'quetes' | 'ressources') => void }) {
+function ModeTabs({ mode, onMode }: { mode: Mode; onMode: (m: Mode) => void }) {
   return (
     <div className="ov-tabs">
+      <button className={mode === 'jour' ? 'on' : ''} onClick={() => onMode('jour')}>☀ Aujourd’hui</button>
       <button className={mode === 'quetes' ? 'on' : ''} onClick={() => onMode('quetes')}>📜 Quêtes</button>
       <button className={mode === 'ressources' ? 'on' : ''} onClick={() => onMode('ressources')}>🌾 Ressources</button>
     </div>
   );
 }
 
+/** Overlay « Aujourd'hui » : ce qu'on coche pendant la session, comme la page d'accueil du site. */
+function OverlayDay({ profileId, isDone, status, onMode }: { profileId: number; isDone: (p: number, id: string) => boolean; status: string; onMode: (m: Mode) => void }) {
+  const profile = profiles.find(p => p.id === profileId)!;
+  const abs = (path: string) => new URL(`${import.meta.env.BASE_URL}${path}`, location.href).href;
+  const favs = repeatables.filter(q => isDone(profileId, favKey(q)));
+  const left = repTodo(repeatables, profileId, isDone);
+  const alm = cachedRange(parisToday(), 1)[0];
+  const offered = alm ? isDone(profileId, `alm-done:${alm.date}`) : false;
+  const doing = catalog.map(raw => { const v = viewFor(raw, profileId, isDone); const d = v.itemIds.filter(id => isDone(profileId, id)).length; return { raw, d, pct: v.itemIds.length ? Math.round((d / v.itemIds.length) * 100) : 0 }; })
+    .filter(x => x.d > 0 && x.pct < 100).sort((a, b) => b.pct - a.pct).slice(0, 4);
+  const resume = (id: string) => { try { localStorage.setItem(LS, id); } catch { /* ignore */ } onMode('quetes'); };
+  return (
+    <div className="overlay ov-quests ov-day" data-world={profile.world}>
+      <NoPipNotice />
+      <ModeTabs mode="jour" onMode={onMode} />
+      <header className="ov-day-head"><img src={abs('persos/' + profile.image)} alt="" /><strong>{profile.name}</strong><i className={`sync-dot ${status}`} /></header>
+      <section className="ov-block">
+        <h4>🔁 Répétables {left.length > 0 ? <span className="badge inline">{left.length}</span> : favs.length ? '✓' : ''}</h4>
+        {favs.length ? <ul className="ov-checks">{favs.map(q => {
+          const d = isDone(profileId, repKey(q));
+          return <li key={q.id} className={d ? 'done' : ''}><label><input type="checkbox" checked={d} onChange={() => toggle(profileId, repKey(q))} /> {q.n}<small>{q.f === 'j' ? 'jour' : 'semaine'}</small></label></li>;
+        })}</ul> : <p className="meta small">Aucune répétable favorite : mets des ⭐ dans Quêtes → Répétables sur le site.</p>}
+      </section>
+      <section className="ov-block">
+        <h4>📅 Almanax</h4>
+        {alm ? <label className={`ov-alm${offered ? ' done' : ''}`}><input type="checkbox" checked={offered} onChange={() => toggle(profileId, `alm-done:${alm.date}`)} />
+          {alm.tribute.item.image_urls?.icon && <img src={alm.tribute.item.image_urls.icon} alt="" />}<span>{alm.tribute.quantity} × {alm.tribute.item.name}<small>{alm.bonus.type.name}</small></span></label>
+          : <p className="meta small">Ouvre l’accueil du site une fois pour charger l’Almanax du jour.</p>}
+      </section>
+      <section className="ov-block">
+        <h4>🥚 Reprendre</h4>
+        {doing.length ? <div className="ov-resume">{doing.map(x => { const di = dofusInfo.find(d => d.id === x.raw.id); return (
+          <button key={x.raw.id} onClick={() => resume(x.raw.id)} title={`${x.raw.name} · ${x.pct} %`}>{di?.image && <img src={abs('dofus/' + di.image)} alt="" />}<span>{x.raw.name}<small>{x.pct} %</small></span></button>
+        ); })}</div> : <p className="meta small">Aucun Dofus commencé.</p>}
+      </section>
+    </div>
+  );
+}
+
 /** Overlay « ressources de métiers » : ce qui manque, saisie rapide de ce qu'on a récolté (+1 / +10 / +100). */
-function OverlayResources({ profileId, status, onMode }: { profileId: number; status: string; onMode: (m: 'quetes' | 'ressources') => void }) {
+function OverlayResources({ profileId, status, onMode }: { profileId: number; status: string; onMode: (m: Mode) => void }) {
   useProgress();
   const { claimOf } = useTeamLive();
   const { team } = teamInfo();
@@ -95,7 +140,7 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
   );
 }
 
-function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: number; isDone: (p: number, id: string) => boolean; status: string; onMode: (m: 'quetes' | 'ressources') => void }) {
+function OverlayQuests({ profileId, isDone, status, onMode }: { profileId: number; isDone: (p: number, id: string) => boolean; status: string; onMode: (m: Mode) => void }) {
   const [dofusId, setDofusId] = useState(() => { try { return localStorage.getItem(LS) ?? catalog[0].id; } catch { return catalog[0].id; } });
   const [count, setCount] = useState(6);
   const pick = (id: string) => { setDofusId(id); try { localStorage.setItem(LS, id); } catch { /* ignore */ } };
