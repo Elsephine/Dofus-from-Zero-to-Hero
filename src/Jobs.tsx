@@ -1,6 +1,6 @@
 // Page « Métiers & ressources » : reprise de l'ancien site (6 métiers, liste globale, multiplicateur, cases à cocher par personnage).
 import { useState } from 'react';
-import { jobs } from './data/metiers';
+import { jobs, jobCrafts } from './data/metiers';
 import { qtyOf, setQty, teamInfo, toggle } from './model/progress';
 import { profiles } from './model/profiles';
 import { post } from './model/messages';
@@ -153,6 +153,15 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
             <div><h3>{job.name} · niveau {job.target}</h3><p className="meta">{job.items.length} ressources distinctes pour ce métier</p></div>
           </div>
           <p className="notice">{job.note}</p>
+          {jobCrafts[job.name] && (
+            <details className="job-crafts" open>
+              <summary>🔨 Crafts à faire ({jobCrafts[job.name].filter((_, i) => isDone(profileId, `craft:${job.name}:${i}`)).length}/{jobCrafts[job.name].length} paliers)</summary>
+              <ul>{jobCrafts[job.name].map(([lv, item, n], i) => {
+                const id = `craft:${job.name}:${i}`; const ok = isDone(profileId, id);
+                return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => toggle(profileId, id)} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}</span></label></li>;
+              })}</ul>
+            </details>
+          )}
           {doneToggle(job.items.filter(([n, q]) => finished(n, q)).length)}
           <div className="res-grid">{job.items.filter(([n, q]) => showDone || !finished(n, q)).map(([n, q]) => row(n, q))}</div>
           {!showDone && job.items.every(([n, q]) => finished(n, q)) && <p className="done-all">🎉 Tout est réuni pour ce métier !</p>}
