@@ -1532,9 +1532,10 @@ body[data-theme="dark"] { --panel: rgba(31, 22, 24, .7) !important; --panel2: rg
 .stuff-hero { border-radius: 50%; aspect-ratio: 1; object-fit: cover; -webkit-mask-image: radial-gradient(circle, #000 55%, transparent 72%); mask-image: radial-gradient(circle, #000 55%, transparent 72%); }
 .stuff-card header .icon-btn.spin svg { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Menu des notifications : fond opaque et, sur téléphone, panneau fixe dans l'écran (il débordait à gauche, hors de l'écran). */
-.bell-menu { background: var(--panel2); box-shadow: 0 12px 30px rgb(var(--shade) / calc(0.667 * var(--shade-k))); max-height: 70vh; overflow-y: auto; }
-body[data-theme="dark"] .bell-menu { background: #22181a; }
+/* Menus déroulants de l'en-tête (notifications, journal, horloge, personnage ; la recherche reste sous son champ) : fond opaque et, sur téléphone, panneau fixe dans l'écran (ils débordaient hors de l'écran). */
+.bell-menu, .top .dd-menu { background: var(--panel2); box-shadow: 0 12px 30px rgb(var(--shade) / calc(0.667 * var(--shade-k))); max-height: 70vh; overflow-y: auto; }
+body[data-theme="dark"] .bell-menu, body[data-theme="dark"] .top .dd-menu { background: #22181a; }
 @media (max-width: 900px) {
-  .bell-menu { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 140px); width: auto; max-height: calc(100dvh - 240px); z-index: 70; }
+  .bell-menu, .top .dd-menu:not(.search-results) { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 140px); width: auto; min-width: 0; max-height: calc(100dvh - 240px); z-index: 70; }
+  .top .search-results { width: 100%; }
 }
