@@ -1,4 +1,5 @@
 // Page « Almanax » : offrande du jour, bonus, récompenses, quête spéciale, et préparation des jours à venir.
+import { ItemImg } from './ui/ItemImg';
 import { useEffect, useState } from 'react';
 import { addDays, cachedRange, fetchRange, hasSpecialQuest, parisToday, type AlmanaxDay } from './model/almanax';
 import { toggle } from './model/progress';
@@ -46,7 +47,6 @@ export function Almanax({ profileId, isDone }: { profileId: number; isDone: (p: 
     try { await navigator.clipboard.writeText(txt); setCopied('Copié !'); } catch { setCopied('Copie impossible ici'); }
     setTimeout(() => setCopied(''), 2000);
   };
-  const img = (d: AlmanaxDay) => d.tribute.item.image_urls?.sd || d.tribute.item.image_urls?.icon;
 
   return (
     <main className="almanax panel">
@@ -70,7 +70,7 @@ export function Almanax({ profileId, isDone }: { profileId: number; isDone: (p: 
           <div className="alm-cards">
             <div className="alm-card">
               <small>📦 Offrande à fournir</small>
-              <div className="alm-item">{img(first) && /^https:\/\//.test(img(first)!) && <img src={img(first)} alt="" />}<strong>{first.tribute.quantity} × {first.tribute.item.name}</strong></div>
+              <div className="alm-item"><ItemImg name={first.tribute.item.name} /><strong>{first.tribute.quantity} × {first.tribute.item.name}</strong></div>
             </div>
             <div className="alm-card">
               <small>🪙 Récompense de la quête</small>

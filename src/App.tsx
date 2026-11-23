@@ -1,3 +1,4 @@
+import { ItemImg } from './ui/ItemImg';
 import { GiftPopup } from './Gifts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, Shirt, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight, Target } from 'lucide-react';
@@ -541,7 +542,7 @@ function Today({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: n
           {alm ? <>
             <label className={`t-alm${offered ? ' done' : ''}`}>
               <input type="checkbox" checked={offered} onChange={e => { if (!offered) burst(e.currentTarget); toggle(profileId, `alm-done:${alm.date}`); }} />
-              {alm.tribute.item.image_urls?.icon && <img src={alm.tribute.item.image_urls.icon} alt="" />}
+              <ItemImg name={alm.tribute.item.name} />
               <span><strong>{alm.tribute.quantity} × {alm.tribute.item.name}</strong><em>Offrande à Théodoran Ax</em></span>
             </label>
             <p className="t-bonus"><b>{alm.bonus.type.name}</b> {alm.bonus.description}</p>

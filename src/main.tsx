@@ -1,3 +1,5 @@
+import '@fontsource/cinzel/500.css';
+import '@fontsource/cinzel/700.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

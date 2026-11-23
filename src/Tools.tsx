@@ -15,7 +15,7 @@ const HUNT = 'https://www.dofuspourlesnoobs.com/resolution-de-chasse-aux-tresors
 export function Tools({ profileId, onStuffs }: { profileId: number; onStuffs?: () => void }) {
   const { list, online, add, remove } = useStuffs(profileId);
   const [name, setName] = useState(''); const [url, setUrl] = useState(''); const [err, setErr] = useState('');
-  const [preview, setPreview] = useState<string | null>(null);
+  const [hunt, setHunt] = useState(false);
   const submit = (e: React.FormEvent) => {
     e.preventDefault(); setErr('');
     if (!name.trim()) return setErr('Donne un nom au stuff.');
@@ -34,7 +34,8 @@ export function Tools({ profileId, onStuffs }: { profileId: number; onStuffs?: (
           <h3>🧭 Chasse aux trésors</h3>
           <p className="meta">Résolution des indices : position de départ, direction et indice, sur Dofus pour les Noobs.</p>
           <a className="link-button" href={HUNT} target="_blank" rel="noreferrer">Ouvrir le résolveur ↗</a>
-          <iframe loading="lazy" title="Résolveur de chasses aux trésors" src={HUNT} />
+          {hunt ? <iframe title="Résolveur de chasses aux trésors" src={HUNT} referrerPolicy="no-referrer" />
+            : <button className="hunt-load" onClick={() => setHunt(true)}>Afficher le résolveur ici<small>Site externe (Dofus pour les Noobs) : chargé seulement si tu cliques.</small></button>}
           <p className="meta small">Si le site bloque l’affichage ici, utilise le bouton au-dessus.</p>
         </section>
 
@@ -67,9 +68,7 @@ export function Tools({ profileId, onStuffs }: { profileId: number; onStuffs?: (
                 <li key={s.id}>
                   <a href={s.url} target="_blank" rel="noreferrer">{s.name} ↗</a>
                   <small>{who?.name}{s.local ? ' · sur cet appareil' : ''}</small>
-                  <button onClick={() => setPreview(preview === s.id ? null : s.id)} title="Aperçu du stuff">{preview === s.id ? 'Masquer' : '👁 Aperçu'}</button>
                   <button onClick={() => void remove(s)} title="Supprimer">✕</button>
-                  {preview === s.id && <StuffPreview url={s.url} />}
                 </li>
               );
             })}
@@ -78,18 +77,5 @@ export function Tools({ profileId, onStuffs }: { profileId: number; onStuffs?: (
         </section>
       </div>
     </main>
-  );
-}
-
-/** Aperçu d'un stuff : capture de la page DofusBook (service de capture Microlink, chargée seulement à l'ouverture). */
-function StuffPreview({ url }: { url: string }) {
-  const [state, setState] = useState<'load' | 'ok' | 'err'>('load');
-  const src = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=screenshot.url&waitForTimeout=4000&viewport.width=1400&viewport.height=1000`;
-  return (
-    <div className="stuff-preview">
-      {state === 'load' && <p className="meta small">Capture du stuff en cours… (quelques secondes)</p>}
-      {state === 'err' ? <p className="meta small">Aperçu indisponible pour l’instant. <a href={url} target="_blank" rel="noreferrer">Ouvrir sur DofusBook ↗</a></p>
-        : <a href={url} target="_blank" rel="noreferrer"><img src={src} alt="Aperçu du stuff" loading="lazy" onLoad={() => setState('ok')} onError={() => setState('err')} style={state === 'ok' ? undefined : { display: 'none' }} /></a>}
-    </div>
   );
 }

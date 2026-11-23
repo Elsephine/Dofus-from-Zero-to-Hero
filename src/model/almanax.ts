@@ -1,4 +1,6 @@
-// Almanax (Dofus Unity) : offrande, bonus et récompenses, via l'API publique Dofusdude (https://api.dofusdu.de, CORS ouvert).
+// Almanax (Dofus Unity) : offrande, bonus et récompenses (API publique Dofusdude), demandés PAR LE SERVEUR DU SITE (RPC fzth_almanax)
+// pour que votre adresse IP ne parte pas chez un site tiers.
+import { codeFor, isUnlocked, rpc } from './progress';
 // Les réponses sont gardées dans le navigateur pour rester lisibles hors ligne.
 export interface AlmanaxDay {
   date: string;
@@ -8,7 +10,6 @@ export interface AlmanaxDay {
   tribute: { item: { ankama_id: number; name: string; subtype: string; image_urls: { icon: string; sd?: string; hq?: string; hd?: string } }; quantity: number };
 }
 
-const API = 'https://api.dofusdu.de/dofus3/v1/fr/almanax';
 const LS = 'fzth:v2:almanax';
 
 export const parisToday = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -30,10 +31,8 @@ export function cachedRange(from: string, size: number): (AlmanaxDay | undefined
 }
 
 export async function fetchRange(from: string, size: number, level: number): Promise<AlmanaxDay[]> {
-  const url = `${API}?range[from]=${from}&range[size]=${size - 1}&level=${level}&timezone=Europe/Paris`;
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const days = (await r.json()) as AlmanaxDay[];
+  const p = [0, 1, 2].find(isUnlocked); if (p === undefined) throw new Error('non connecté');
+  const days = (await rpc<AlmanaxDay[]>('fzth_almanax', { p_profile: p, p_code: codeFor(p), p_from: from, p_size: size, p_level: level })) ?? [];
   const c = readCache();
   for (const d of days) c[d.date] = d;
   writeCache(c);

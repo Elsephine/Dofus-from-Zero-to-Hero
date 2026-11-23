@@ -1,5 +1,6 @@
 // Overlay à côté de Dofus : mini-fenêtre toujours au premier plan (Document Picture-in-Picture, Chrome / Edge),
 // sinon petite fenêtre séparée. On y coche la prochaine quête sans quitter le jeu.
+import { ItemImg } from './ui/ItemImg';
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { catalog } from './model/catalog';
@@ -170,7 +171,7 @@ function OverlayDay({ profileId, isDone, status, onMode }: { profileId: number; 
       <section className="ov-block">
         <h4>📅 Almanax</h4>
         {alm ? <label className={`ov-alm${offered ? ' done' : ''}`}><input type="checkbox" checked={offered} onChange={() => toggle(profileId, `alm-done:${alm.date}`)} />
-          {alm.tribute.item.image_urls?.icon && <img src={alm.tribute.item.image_urls.icon} alt="" />}<span>{alm.tribute.quantity} × {alm.tribute.item.name}<small>{alm.bonus.type.name}</small></span></label>
+          <ItemImg name={alm.tribute.item.name} /><span>{alm.tribute.quantity} × {alm.tribute.item.name}<small>{alm.bonus.type.name}</small></span></label>
           : <p className="meta small">Ouvre l’accueil du site une fois pour charger l’Almanax du jour.</p>}
       </section>
       <section className="ov-block">
