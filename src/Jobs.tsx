@@ -145,7 +145,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
         <div><strong>{done} / {ALL.length}</strong><span>{teamMode ? 'réunies par l’équipe' : 'ressources validées'}</span></div>
         <div><strong>{pct} %</strong><span>progression</span></div>
         <div className="mode-switch">
-          <button className={teamMode ? 'on' : ''} onClick={() => setTeamMode(true)} title="Besoin × 3 personnages, quantités de tous additionnées">👥 Équipe (×{profiles.length})</button>
+          <button className={teamMode ? 'on' : ''} onClick={() => setTeamMode(true)} title="Besoin pour chaque personnage, quantités de tous additionnées">👥 Équipe (×{profiles.length})</button>
           <button className={!teamMode ? 'on' : ''} onClick={() => setTeamMode(false)}>👤 Moi seul</button>
           {!teamMode && <label className="mult">×<input type="number" min={1} max={999} value={mult} onChange={e => setMult(Number(e.target.value))} /></label>}
         </div>

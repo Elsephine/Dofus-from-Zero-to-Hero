@@ -3,13 +3,14 @@
 // Les images arrivent en « data: » et sont gardées dans le navigateur (aussi les absences) pour ne les demander qu'une fois.
 import { useSyncExternalStore } from 'react';
 import { codeFor, isUnlocked, rpc } from './progress';
+import { profiles } from './profiles';
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 try { localStorage.removeItem('fzth:v2:resIcons'); } catch { /* ancien cache d'adresses externes */ }
 
 let version = 0; const listeners = new Set<() => void>();
 const emit = () => { version++; listeners.forEach(l => l()); };
-const me = () => [0, 1, 2].find(isUnlocked);
+const me = () => profiles.map(x => x.id).find(isUnlocked);
 
 function makeStore<K extends string | number>(lsKey: string, fn: string, arg: string, batch: number) {
   let cache: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem(lsKey) ?? '{}'); } catch { return {}; } })();

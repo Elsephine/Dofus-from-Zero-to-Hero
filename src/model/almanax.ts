@@ -1,6 +1,7 @@
 // Almanax (Dofus Unity) : offrande, bonus et récompenses (API publique Dofusdude), demandés PAR LE SERVEUR DU SITE (RPC fzth_almanax)
 // pour que votre adresse IP ne parte pas chez un site tiers.
 import { codeFor, isUnlocked, rpc } from './progress';
+import { profiles } from './profiles';
 // Les réponses sont gardées dans le navigateur pour rester lisibles hors ligne.
 export interface AlmanaxDay {
   date: string;
@@ -31,7 +32,7 @@ export function cachedRange(from: string, size: number): (AlmanaxDay | undefined
 }
 
 export async function fetchRange(from: string, size: number, level: number): Promise<AlmanaxDay[]> {
-  const p = [0, 1, 2].find(isUnlocked); if (p === undefined) throw new Error('non connecté');
+  const p = profiles.map(x => x.id).find(isUnlocked); if (p === undefined) throw new Error('non connecté');
   const days = (await rpc<AlmanaxDay[]>('fzth_almanax', { p_profile: p, p_code: codeFor(p), p_from: from, p_size: size, p_level: level })) ?? [];
   const c = readCache();
   for (const d of days) c[d.date] = d;
