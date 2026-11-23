@@ -51,8 +51,11 @@ for (const a of Object.values(db.achievements)) dbAch.set(key(a.name), a.id);
 const canonical = new Map<string, string>();
 /** Anciens identifiants d'une quête → identifiant commun (pour reprendre les coches déjà faites). */
 export const idAliases = new Map<string, string>();
+/** Quêtes renommées (nom corrigé) : ancien identifiant, pour reprendre les coches. */
+const RENAMED: Record<string, string> = { transportpeucommun: 'q-transportencommun' };
 const unify = (_kind: string, name: string, id: string) => {
   const k = key(name).replace(/[^a-z0-9]/g, ''); const c = canonical.get(k);
+  if (RENAMED[k] && RENAMED[k] !== (c ?? id)) idAliases.set(RENAMED[k], c ?? id);
   if (!c) { canonical.set(k, id); return id; }
   if (c !== id) idAliases.set(id, c);
   return c;
