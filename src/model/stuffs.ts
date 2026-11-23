@@ -20,7 +20,7 @@ export function useStuffs(profileId: number) {
       // Envoie d'abord ce qui a été ajouté hors ligne.
       for (const s of read().filter(x => x.local)) await rpc('fzth_stuff_add', { p_profile: profileId, p_code: code, p_name: s.name, p_url: s.url });
       const rows = await rpc<Stuff[]>('fzth_stuff_list', { p_profile: profileId, p_code: code });
-      set(rows ?? []); setOnline(true); refreshNotifications();
+      set((rows ?? []).map(r => ({ ...r, url: /^https:\/\//i.test(r.url ?? '') ? r.url : '' }))); setOnline(true); refreshNotifications(); // liens https uniquement
     } catch { setOnline(false); }
   };
   useEffect(() => { void refresh(); }, [profileId]); // eslint-disable-line react-hooks/exhaustive-deps
