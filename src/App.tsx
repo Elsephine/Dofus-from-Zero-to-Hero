@@ -1,3 +1,4 @@
+import { JobLevels, openJobTab } from './JobLevels';
 import { ItemImg } from './ui/ItemImg';
 import { GiftPopup } from './Gifts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
@@ -550,6 +551,7 @@ function Today({ profileId, isDone, onOpen }: { profileId: number; isDone: (p: n
           <button className="link-like t-more" onClick={() => onOpen('almanax')}>Calendrier Almanax →</button>
         </section>
       </div>
+      <JobLevels profileId={profileId} compact onOpenJob={name => { openJobTab(name); onOpen('jobs'); }} />
       <div className="today-team">
         <TeamStrip profileId={profileId} isDone={isDone} />
         <CallButton profileId={profileId} />

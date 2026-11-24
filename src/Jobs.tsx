@@ -1,4 +1,5 @@
 // Page « Métiers & ressources » : reprise de l'ancien site (6 métiers, liste globale, multiplicateur, cases à cocher par personnage).
+import { JobLevels } from './JobLevels';
 import { useState } from 'react';
 import { jobs, jobCrafts } from './data/metiers';
 import { qtyOf, setQty, teamInfo, toggle } from './model/progress';
@@ -13,7 +14,7 @@ const key = jobKey;
 export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: number, id: string) => boolean }) {
   useJobLevels();
   const lsMult = `fzth:v2:jobMult:${profileId}`;
-  const [tab, setTab] = useState('global');
+  const [tab, setTab] = useState(() => { try { const t = sessionStorage.getItem('fzth:v2:jobTab'); sessionStorage.removeItem('fzth:v2:jobTab'); return t || 'global'; } catch { return 'global'; } });
   const [mult, setMultState] = useState<number>(() => { try { return Number(localStorage.getItem(lsMult)) || 1; } catch { return 1; } });
   const [confirmReset, setConfirmReset] = useState(false);
   // Mode équipe : besoin × 3 personnages, et ce que chacun possède est additionné (« si j'ai 10 aubergines, il en reste 10 de moins à récolter pour l'équipe »).
@@ -159,6 +160,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
 
       {!job ? (
         <section>
+          <JobLevels profileId={profileId} onOpenJob={setTab} />
           <div className="detail-head">
             <div><h3>Liste globale des ressources</h3><p className="meta">Regroupées entre tous les métiers pour éviter les doublons.</p></div>
             <div className="row">

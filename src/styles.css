@@ -1559,3 +1559,20 @@ body[data-theme="dark"] .bell-menu, body[data-theme="dark"] .top .dd-menu { back
 .lvl-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 2px; border-radius: 999px; border: 1px solid var(--perso, var(--world-border)); font-weight: 700; font-size: 13px; }
 .lvl-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
 .lvl-chip[data-world="sram"] { --perso: #7d5fd0; } .lvl-chip[data-world="feca"] { --perso: #22999e; } .lvl-chip[data-world="elio"] { --perso: #e07a2e; } .lvl-chip[data-world="steam"] { --perso: #c2508c; }
+
+/* Niveaux de métier (Aujourd'hui + Métiers) */
+.job-levels { padding: 12px 14px; margin-bottom: 12px; border: 1.5px solid var(--world-accent); }
+.job-levels h3 { display: flex; align-items: center; gap: 8px; color: var(--world-accent); margin-bottom: 10px; }
+.jl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.jl-card { display: grid; gap: 6px; padding: 10px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--world-border); }
+.jl-card.done { border-color: #3aa76d; }
+.jl-name { all: unset; cursor: pointer; font-weight: 700; font-family: var(--title-font); }
+.jl-name:hover { color: var(--world-accent); }
+.jl-lvl { display: flex; align-items: baseline; gap: 6px; }
+.jl-lvl input { width: 72px; font-size: 26px; font-weight: 800; text-align: center; padding: 2px 4px; border-radius: 10px; border: 1px solid var(--world-border); background: var(--bg); color: var(--world-accent); }
+.jl-lvl small { color: var(--muted); font-weight: 700; }
+.jl-card .bar { height: 6px; }
+.jl-mates { display: flex; gap: 4px; flex-wrap: wrap; }
+.job-levels.compact .jl-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.job-levels.compact .jl-lvl input { font-size: 20px; width: 60px; }
+@media (max-width: 600px) { .jl-grid, .job-levels.compact .jl-grid { grid-template-columns: repeat(2, 1fr); } }
