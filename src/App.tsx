@@ -140,7 +140,7 @@ export function App() {
     <div className="app">
       <div className="perso-backdrop" aria-hidden style={{ backgroundImage: `url(${import.meta.env.BASE_URL}persos/${profile.image})` }} />
       <header className="top" style={{ '--hero': `url(${import.meta.env.BASE_URL}persos/${profile.image})` } as React.CSSProperties}>
-        <h1><button className="home-link" onClick={() => setView('today')}><span className="sym">{profile.symbol}</span> From Zero to Hero</button></h1>
+        <h1><button className="home-link" onClick={() => setView('today')}><span className="sym">{profile.symbol}</span><span className="brand-txt"> From Zero to Hero</span></button></h1>
         <nav className="mainnav">
           {([
             ['today', 'today', 'Aujourd’hui', 'Ce qu’on fait en se connectant : répétables, Almanax, reprise', <Sun key="i" />, repLeft],
