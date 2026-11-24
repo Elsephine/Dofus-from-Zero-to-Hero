@@ -6,7 +6,7 @@ import { profiles, teamProfiles } from './model/profiles';
 import { post } from './model/messages';
 import { Mates, OfferButton, ResIcon } from './Mates';
 
-import { allJobRes, craftId, jobItemsFor, jobKey, jobLevel, levelChoices, palierEnd, setJobLevel, useJobLevels } from './model/jobs';
+import { allJobRes, craftId, jobItemsFor, jobKey, jobLvlKey, myJobLevel, jobLevel, levelChoices, palierEnd, setJobLevel, useJobLevels } from './model/jobs';
 import { ClaimButton } from './TeamLive';
 const key = jobKey;
 
@@ -154,7 +154,7 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
       </div>
       <nav className="tabs always">
         <button className={tab === 'global' ? 'on' : ''} onClick={() => setTab('global')}>Tous les métiers</button>
-        {jobs.map(j => <button key={j.name} className={tab === j.name ? 'on' : ''} onClick={() => setTab(j.name)}>{j.name} <small>{jobLevel(j)}</small></button>)}
+        {jobs.map(j => <button key={j.name} className={tab === j.name ? 'on' : ''} onClick={() => setTab(j.name)}>{j.name} <small>{myJobLevel(profileId, j.name) ? `${myJobLevel(profileId, j.name)}/` : ''}{jobLevel(j)}</small></button>)}
       </nav>
 
       {!job ? (
@@ -174,7 +174,13 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
       ) : (
         <section>
           <div className="detail-head">
-            <div><h3>{job.name} · niveau {jobLevel(job)}</h3><p className="meta">{items.length} ressource{items.length > 1 ? "s" : ""} distincte{items.length > 1 ? "s" : ""} jusqu’au niveau {jobLevel(job)}</p></div>
+            <div><h3>{job.name} · objectif niveau {jobLevel(job)}</h3><p className="meta">{items.length} ressource{items.length > 1 ? "s" : ""} distincte{items.length > 1 ? "s" : ""} jusqu’au niveau {jobLevel(job)}</p></div>
+            <div className="job-mylvl">
+              <label className="job-lvl">Mon niveau <input type="number" min={0} max={200} value={myJobLevel(profileId, job.name) || ''} placeholder="?"
+                onChange={e => setQty(profileId, jobLvlKey(job.name), Math.max(0, Math.min(200, Number(e.target.value) || 0)), Infinity)} /></label>
+              {profiles.filter(p => p.id !== profileId && (team[p.id] || p.id === profileId) && myJobLevel(p.id, job.name) > 0).map(p =>
+                <span key={p.id} className="lvl-chip" data-world={p.world} title={`${p.name} : niveau ${myJobLevel(p.id, job.name)}`}><img src={`${import.meta.env.BASE_URL}persos/${p.image}`} alt="" />{myJobLevel(p.id, job.name)}</span>)}
+            </div>
             {levelChoices(job).length > 0 && <label className="job-lvl">Jusqu’au niveau <select value={jobLevel(job)} onChange={e => setJobLevel(job.name, Number(e.target.value))}>
               {levelChoices(job).map(l => <option key={l} value={l}>{l}</option>)}
             </select></label>}
@@ -184,10 +190,10 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
             const list = jobCrafts[job.name].map((c, i) => ({ c, i })).filter(x => palierEnd(x.c[0]) <= jobLevel(job));
             return (
               <details className="job-crafts" open>
-                <summary>🔨 Crafts à faire jusqu’au niveau {jobLevel(job)} ({list.filter(x => isDone(profileId, craftId(job.name, x.i))).length}/{list.length} paliers)</summary>
+                <summary>🔨 Crafts à faire jusqu’au niveau {jobLevel(job)} ({list.filter(x => isDone(profileId, craftId(job.name, x.i)) || palierEnd(x.c[0]) <= myJobLevel(profileId, job.name)).length}/{list.length} paliers)</summary>
                 <ul>{list.map(({ c: [lv, item, n, ing], i }) => {
-                  const id = craftId(job.name, i); const ok = isDone(profileId, id);
-                  return <li key={i} className={ok ? 'done' : ''}><label><input type="checkbox" checked={ok} onChange={() => tickCraft(id, ok, n, ing ?? [])} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}{ing?.length ? <small className="ing"> · {ing.map(([a, q]) => `${q * n} ${a}`).join(', ')}</small> : null}</span></label></li>;
+                  const id = craftId(job.name, i); const passed = palierEnd(lv) <= myJobLevel(profileId, job.name); const ok = passed || isDone(profileId, id);
+                  return <li key={i} className={ok ? 'done' : ''} title={passed ? 'Déjà dépassé avec ton niveau actuel' : undefined}><label><input type="checkbox" checked={ok} disabled={passed} onChange={() => tickCraft(id, ok, n, ing ?? [])} /><span className="lv">Niv. {lv}</span><strong>{n.toLocaleString('fr-FR')} ×</strong> <span>{item}{ing?.length ? <small className="ing"> · {ing.map(([a, q]) => `${q * n} ${a}`).join(', ')}</small> : null}</span></label></li>;
                 })}</ul>
               </details>
             );

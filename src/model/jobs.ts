@@ -1,6 +1,7 @@
 // Ressources des métiers (liste globale sans doublons), niveau visé par métier et clé de progression d'une ressource.
 import { useSyncExternalStore } from 'react';
 import { jobs, jobCrafts, type JobPlan } from '../data/metiers';
+import { qtyOf } from './progress';
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 export const jobKey = (name: string) => 'job:' + norm(name).replace(/[^a-z0-9]+/g, '-');
@@ -37,10 +38,17 @@ export function jobItems(j: JobPlan, skip?: Skip): [string, number][] {
   });
   return [...m.values()];
 }
-/** Même chose additionnée pour plusieurs personnages (chacun avec ses paliers cochés). */
+/** Niveau actuel d'un personnage dans un métier (saisi dans Métiers, partagé avec l'équipe). */
+export const jobLvlKey = (job: string) => 'joblvl:' + job;
+export const myJobLevel = (p: number, job: string) => qtyOf(p, jobLvlKey(job)) ?? 0;
+/** Palier déjà fait : coché, ou dépassé par le niveau actuel du personnage. */
+export const palierDone = (p: number, job: string, i: number, done: (p: number, id: string) => boolean) => {
+  const c = jobCrafts[job]?.[i]; return done(p, craftId(job, i)) || (!!c && palierEnd(c[0]) <= myJobLevel(p, job));
+};
+/** Même chose additionnée pour plusieurs personnages (chacun avec ses paliers cochés ou dépassés). */
 export function jobItemsFor(j: JobPlan, ids: number[], done: (p: number, id: string) => boolean): [string, number][] {
   const m = new Map<string, [string, number]>();
-  for (const p of ids) for (const [n, q] of jobItems(j, (job, i) => done(p, craftId(job, i)))) { const k = nk(n); const e = m.get(k); if (e) e[1] += q; else m.set(k, [n, q]); }
+  for (const p of ids) for (const [n, q] of jobItems(j, (job, i) => palierDone(p, job, i, done))) { const k = nk(n); const e = m.get(k); if (e) e[1] += q; else m.set(k, [n, q]); }
   return [...m.values()];
 }
 

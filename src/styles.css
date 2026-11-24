@@ -1554,3 +1554,8 @@ body[data-theme="dark"] .bell-menu, body[data-theme="dark"] .top .dd-menu { back
   .top .search-results { width: min(520px, 92vw); }
 }
 @media (max-width: 1100px) and (min-width: 901px) { .top .brand-txt, .top h1 .txt { display: none; } }
+.job-mylvl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.job-lvl input[type=number] { width: 64px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--world-border); background: var(--panel2); color: var(--text); font-weight: 700; }
+.lvl-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 2px; border-radius: 999px; border: 1px solid var(--perso, var(--world-border)); font-weight: 700; font-size: 13px; }
+.lvl-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.lvl-chip[data-world="sram"] { --perso: #7d5fd0; } .lvl-chip[data-world="feca"] { --perso: #22999e; } .lvl-chip[data-world="elio"] { --perso: #e07a2e; } .lvl-chip[data-world="steam"] { --perso: #c2508c; }
