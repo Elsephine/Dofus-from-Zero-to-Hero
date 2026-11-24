@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { jobs, jobCrafts } from './data/metiers';
 import { qtyOf, setQty, teamInfo, toggle } from './model/progress';
-import { profiles } from './model/profiles';
+import { profiles, teamProfiles } from './model/profiles';
 import { post } from './model/messages';
 import { Mates, OfferButton, ResIcon } from './Mates';
 
@@ -17,7 +17,9 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const [mult, setMultState] = useState<number>(() => { try { return Number(localStorage.getItem(lsMult)) || 1; } catch { return 1; } });
   const [confirmReset, setConfirmReset] = useState(false);
   // Mode équipe : besoin × 3 personnages, et ce que chacun possède est additionné (« si j'ai 10 aubergines, il en reste 10 de moins à récolter pour l'équipe »).
-  const [teamMode, setTeamModeState] = useState<boolean>(() => { try { return localStorage.getItem('fzth:v2:jobTeamMode') !== '0'; } catch { return true; } });
+  const soloAcc = profiles.find(p => p.id === profileId)?.team === false; // compte à part : toujours ses propres besoins
+  const [teamModePref, setTeamModeState] = useState<boolean>(() => { try { return localStorage.getItem('fzth:v2:jobTeamMode') !== '0'; } catch { return true; } });
+  const teamMode = teamModePref && !soloAcc;
   const setTeamMode = (v: boolean) => { setTeamModeState(v); try { localStorage.setItem('fzth:v2:jobTeamMode', v ? '1' : '0'); } catch { /* ignore */ } };
   const [copied, setCopied] = useState('');
   // Ressources finalisées masquées par défaut pour libérer de la place.
@@ -25,10 +27,10 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
   const setShowDone = (v: boolean) => { setShowDoneState(v); try { localStorage.setItem('fzth:v2:showDoneRes', v ? '1' : '0'); } catch { /* ignore */ } };
   const setMult = (v: number) => { const n = Math.min(999, Math.max(1, Math.floor(v) || 1)); setMultState(n); try { localStorage.setItem(lsMult, String(n)); } catch { /* ignore */ } };
   const { team } = teamInfo();
-  const counted = profiles.filter(p => p.id === profileId || team[p.id]); // personnages dont on connaît les quantités
-  const notShared = profiles.filter(p => p.id !== profileId && !team[p.id]);
+  const counted = teamProfiles.filter(p => p.id === profileId || team[p.id]); // personnages dont on connaît les quantités
+  const notShared = teamProfiles.filter(p => p.id !== profileId && !team[p.id]);
   // Besoins : paliers de craft non cochés de chaque personnage (mode équipe : les 3 additionnés, déjà comptés → facteur 1).
-  const who = teamMode ? profiles.map(p => p.id) : [profileId];
+  const who = teamMode ? teamProfiles.map(p => p.id) : [profileId];
   const ALL = allJobRes(who, isDone);
   const TOTAL = new Map(ALL.map(x => [key(x.name), x.qty])); // besoin total (tous métiers) par ressource
   const factor = teamMode ? 1 : mult;
@@ -138,14 +140,14 @@ export function Jobs({ profileId, isDone }: { profileId: number; isDone: (p: num
     <main className="jobs panel">
       <p className="eyebrow">Craft manager</p>
       <h2>Métiers & ressources</h2>
-      {teamMode && <p className="meta small team-note">Mode équipe : besoin pour monter les métiers sur les {profiles.length} personnages, moins tout ce que l’équipe possède déjà.
+      {teamMode && <p className="meta small team-note">Mode équipe : besoin pour monter les métiers sur les {teamProfiles.length} personnages, moins tout ce que l’équipe possède déjà.
         {notShared.length > 0 && <span className="warn"> {notShared.map(p => p.name).join(' et ')} ne partage{notShared.length > 1 ? 'nt' : ''} pas encore sa progression : ses quantités ne sont pas comptées.</span>}</p>}
       <div className="job-stats">
         <div><strong>{jobs.length}</strong><span>métiers</span></div>
         <div><strong>{done} / {ALL.length}</strong><span>{teamMode ? 'réunies par l’équipe' : 'ressources validées'}</span></div>
         <div><strong>{pct} %</strong><span>progression</span></div>
         <div className="mode-switch">
-          <button className={teamMode ? 'on' : ''} onClick={() => setTeamMode(true)} title="Besoin pour chaque personnage, quantités de tous additionnées">👥 Équipe (×{profiles.length})</button>
+          {!soloAcc && <button className={teamMode ? 'on' : ''} onClick={() => setTeamMode(true)} title="Besoin pour chaque personnage, quantités de tous additionnées">👥 Équipe (×{teamProfiles.length})</button>}
           <button className={!teamMode ? 'on' : ''} onClick={() => setTeamMode(false)}>👤 Moi seul</button>
           {!teamMode && <label className="mult">×<input type="number" min={1} max={999} value={mult} onChange={e => setMult(Number(e.target.value))} /></label>}
         </div>

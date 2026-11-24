@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { catalog } from './model/catalog';
 import { dofusInfo } from './data/tougli/dofus-info';
 import { viewFor } from './model/choices';
-import { profiles } from './model/profiles';
+import { profiles, teamProfiles } from './model/profiles';
 import { sync, toggle, useProgress } from './model/progress';
 import { overlayClosed, overlayOpened } from './model/overlayState';
 import { closeTrophy, confettiIn, useTrophy } from './model/celebrate';
@@ -191,12 +191,12 @@ function OverlayResources({ profileId, status, onMode }: { profileId: number; st
   const { team } = teamInfo();
   const profile = profiles.find(p => p.id === profileId)!;
   const [onlyMine, setOnlyMine] = useState(() => { try { return localStorage.getItem('fzth:v2:ovMine') === '1'; } catch { return false; } });
-  const teamMode = (() => { try { return localStorage.getItem('fzth:v2:jobTeamMode') !== '0'; } catch { return true; } })();
+  const teamMode = profile.team !== false && (() => { try { return localStorage.getItem('fzth:v2:jobTeamMode') !== '0'; } catch { return true; } })();
   const mult = (() => { try { return Number(localStorage.getItem(`fzth:v2:jobMult:${profileId}`)) || 1; } catch { return 1; } })();
-  const counted = profiles.filter(p => p.id === profileId || team[p.id]);
+  const counted = teamProfiles.filter(p => p.id === profileId || team[p.id]);
   const factor = teamMode ? 1 : mult;
   useJobLevels();
-  const rows = allJobRes(teamMode ? profiles.map(p => p.id) : [profileId], isDone).map(x => {
+  const rows = allJobRes(teamMode ? teamProfiles.map(p => p.id) : [profileId], isDone).map(x => {
     const k = jobKey(x.name); const need = x.qty * factor;
     const have = teamMode ? counted.reduce((s, p) => s + (qtyOf(p.id, k) ?? 0), 0) : qtyOf(profileId, k) ?? 0;
     return { ...x, k, need, have, missing: Math.max(0, need - have), mine: qtyOf(profileId, k) ?? 0, owner: claimOf(k) };

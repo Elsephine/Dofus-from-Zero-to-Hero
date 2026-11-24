@@ -4,7 +4,7 @@ import { dungeonBosses } from './data/jeu/boss';
 import { BossImg } from './ui/BossImg';
 import { challengeOf, planRuns } from './model/achievements';
 import { useMemo, useRef, useState } from 'react';
-import { profiles } from './model/profiles';
+import { profiles, teamProfiles } from './model/profiles';
 import { isDone, qtyOf, teamInfo, toggle } from './model/progress';
 import { loadAvail, setClaim, setMyAvail, useTeamLive } from './model/teamlive';
 import { allJobRes, jobKey, useJobLevels } from './model/jobs';
@@ -85,9 +85,9 @@ export function Availability({ profileId }: { profileId: number }) {
       let start = -1;
       for (let h = 0; h <= 24; h++) {
         const slot = h < 24 ? toParis(d, h, off) : '';
-        const n = h < 24 ? sets.filter(x => x.s.has(slot)).length : 0;
-        if (n === profiles.length && start < 0) start = h;
-        if (n !== profiles.length && start >= 0) { out.push({ d, from: start, to: h, n }); start = -1; }
+        const n = h < 24 ? sets.filter(x => x.p.team !== false && x.s.has(slot)).length : 0;
+        if (n === teamProfiles.length && start < 0) start = h;
+        if (n !== teamProfiles.length && start >= 0) { out.push({ d, from: start, to: h, n }); start = -1; }
       }
     }
     return out;
@@ -116,7 +116,7 @@ export function Availability({ profileId }: { profileId: number }) {
               const who = sets.filter(x => x.s.has(slot));
               const meOn = mine.has(slot);
               return (
-                <button key={d} className={`cell${meOn ? ' me' : ''}${who.length === profiles.length ? ' all' : ''}`}
+                <button key={d} className={`cell${meOn ? ' me' : ''}${who.length >= teamProfiles.length ? ' all' : ''}`}
                   title={`${DAY_FULL[d]} ${h} h : ${who.map(x => x.p.name).join(', ') || 'personne'}`}
                   onMouseDown={() => { paint.current = !meOn; apply(slot, !meOn); }}
                   onMouseEnter={() => { if (paint.current !== null) apply(slot, paint.current); }}>
@@ -130,7 +130,7 @@ export function Availability({ profileId }: { profileId: number }) {
       <label className="note">Remarque <input value={myNote} maxLength={200} placeholder="Ex. dispo surtout le week-end" onChange={e => setMyAvail([...mine], e.target.value || null)} /></label>
       {avail.filter(a => a.note && a.profile_id !== profileId).map(a => <p key={a.profile_id} className="meta small">💬 {profiles.find(p => p.id === a.profile_id)?.name} : {a.note}</p>)}
       <div className="common">
-        <h3>Créneaux communs aux {profiles.length}</h3>
+        <h3>Créneaux communs aux {teamProfiles.length}</h3>
         {ranges.length ? ranges.map((r, k) => {
           const a = other(r.d, r.from), b = other(r.d, r.to % 24);
           return <p key={k}>✨ <strong>{cap(DAY_FULL[r.d])} {r.from} h – {r.to} h</strong> <small>({zone === 'fr' ? ca.label || 'Canada' : 'France'} : {DAY_FULL[a.d]} {a.h} h – {b.h} h)</small></p>;
@@ -156,9 +156,9 @@ export function ClaimButton({ itemId, profileId }: { itemId: string; profileId: 
 export function Harvest({ profileId }: { profileId: number }) {
   const { claimOf } = useTeamLive();
   const { team } = teamInfo();
-  const counted = profiles.filter(p => p.id === profileId || team[p.id]);
+  const counted = teamProfiles.filter(p => p.id === profileId || team[p.id]);
   useJobLevels();
-  const rows = allJobRes(profiles.map(p => p.id), isDone).map(x => {
+  const rows = allJobRes(teamProfiles.map(p => p.id), isDone).map(x => {
     const k = jobKey(x.name); const need = x.qty;
     const have = counted.reduce((s, p) => s + (qtyOf(p.id, k) ?? 0), 0);
     return { ...x, k, need, have, missing: Math.max(0, need - have), owner: claimOf(k) };
@@ -171,7 +171,7 @@ export function Harvest({ profileId }: { profileId: number }) {
   return (
     <section className="harvest">
       <h2>🌾 Répartition de la récolte</h2>
-      <p className="meta small">Ressources des métiers qui manquent encore à l’équipe (besoin pour les {profiles.length} personnages, paliers déjà faits exclus − ce que vous avez). Prends une ressource avec ✋ : les autres savent que tu t’en occupes.</p>
+      <p className="meta small">Ressources des métiers qui manquent encore à l’équipe (besoin pour les {teamProfiles.length} personnages, paliers déjà faits exclus − ce que vous avez). Prends une ressource avec ✋ : les autres savent que tu t’en occupes.</p>
       {groups.map(([title, list]) => list.length ? (
         <div key={title} className="harvest-group">
           <h3>{title} <small>({list.length})</small></h3>
