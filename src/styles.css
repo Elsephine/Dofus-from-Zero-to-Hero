@@ -1550,6 +1550,7 @@ body[data-theme="dark"] .bell-menu, body[data-theme="dark"] .top .dd-menu { back
   .top { flex-wrap: nowrap !important; }
   .top > * { min-width: 0; }
   .top .dd.search { flex: 1 1 140px; min-width: 110px; }
-  .top .dd.search input { min-width: 0; width: 100%; }
+  .top .dd.search > input { min-width: 0; width: 100%; }
+  .top .search-results { width: min(520px, 92vw); }
 }
 @media (max-width: 1100px) and (min-width: 901px) { .top .brand-txt, .top h1 .txt { display: none; } }
