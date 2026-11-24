@@ -121,7 +121,7 @@ async function doSync() {
         const k = key(r.profile_id, r.item_id);
         if (pending.has(k)) continue;
         const local = entries.get(k);
-        if (!local || Date.parse(r.updated_at) >= Date.parse(local.at)) entries.set(k, { done: r.done, at: r.updated_at, ...(r.qty != null ? { qty: r.qty } : {}) });
+        if (!local || Date.parse(r.updated_at) >= Date.parse(local.at)) entries.set(k, { done: r.done, at: new Date(r.updated_at).toISOString(), ...(r.qty != null ? { qty: r.qty } : {}) });
       }
       // Équipe : qui partage, et la progression des autres (lecture seule, jamais renvoyée au serveur).
       const st = await rpc<{ profile_id: number; shared: boolean }[]>('fzth_team_status', { p_profile: p, p_code: code });
@@ -130,7 +130,7 @@ async function doSync() {
       const others = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_team_get', { p_profile: p, p_code: code });
       for (const r of others ?? []) {
         if (codes[r.profile_id]) continue; // personnage aussi déverrouillé ici : on garde sa propre synchro
-        entries.set(key(r.profile_id, r.item_id), { done: r.done, at: r.updated_at, ...(r.qty != null ? { qty: r.qty } : {}) });
+        entries.set(key(r.profile_id, r.item_id), { done: r.done, at: new Date(r.updated_at).toISOString(), ...(r.qty != null ? { qty: r.qty } : {}) });
       }
     } catch (e) {
       if ((e as RpcError).message === 'code invalide') { delete codes[p]; writeLS(LS_CODES, codes); failed = 'badcode'; } // code changé ailleurs
@@ -232,7 +232,7 @@ export function importProfile(p: number, b: Backup): number {
   for (const [id, e] of b.entries) {
     if (typeof id !== 'string' || typeof e?.done !== 'boolean' || typeof e.at !== 'string') continue;
     const k = key(p, id); const cur = entries.get(k);
-    if (cur && cur.at >= e.at) continue;
+    if (cur && Date.parse(cur.at) >= Date.parse(e.at)) continue;
     entries.set(k, { done: e.done, at: e.at, ...(typeof e.qty === 'number' ? { qty: e.qty } : {}) });
     pending.add(k); n++;
   }

@@ -143,8 +143,11 @@ export function SessionRecap({ isDone }: { isDone: IsDone }) {
   const [note, setNote] = useState('');
   if (!recapFor) return null;
   const { p, s } = recapFor;
-  const quests = listDone(p).filter(id => isQuestKey(id) && (entryAt(p, id) ?? '') >= s.start);
-  const reps = listDone(p).filter(id => id.startsWith('rep:') && (entryAt(p, id) ?? '') >= s.start).length;
+  // Comparaison en dates (et non en texte : le serveur renvoie un autre format d'heure, ce qui remettait le récap à 0).
+  const t0 = Date.parse(s.start); const since = (id: string) => Date.parse(entryAt(p, id) ?? '') >= t0;
+  const quests = listDone(p).filter(id => isQuestKey(id) && since(id));
+  const reps = listDone(p).filter(id => id.startsWith('rep:') && since(id)).length;
+  const achs = listDone(p).filter(id => id.startsWith('ach:') && since(id)).length;
   const now = doneByDofus(p, isDone);
   const moved = catalog.map(raw => ({ raw, d: (now[raw.id] ?? 0) - (s.startDone[raw.id] ?? 0), t: viewFor(raw, p, isDone).itemIds.length }))
     .filter(x => x.d > 0).sort((a, b) => b.d - a.d).slice(0, 4);
@@ -156,6 +159,7 @@ export function SessionRecap({ isDone }: { isDone: IsDone }) {
         <h2>Bien joué !</h2>
         <div className="recap-nums">
           <span><b>{quests.length}</b> quête{quests.length > 1 ? 's' : ''}</span>
+          <span><b>{achs}</b> succès</span>
           <span><b>{reps}</b> répétable{reps > 1 ? 's' : ''}</span>
         </div>
         {moved.length > 0 && <ul className="recap-list">{moved.map(m => {
@@ -177,7 +181,7 @@ export function LastNote({ profileId, isDone, onOpen }: { profileId: number; isD
   const n = ls.get<{ text: string; at: string } | null>(noteKey(profileId), null);
   // Dernière quête cochée, son Dofus et la quête suivante.
   let last: { id: string; at: string } | null = null;
-  for (const id of listDone(profileId)) { if (!isQuestKey(id)) continue; const at = entryAt(profileId, id) ?? ''; if (!last || at > last.at) last = { id, at }; }
+  for (const id of listDone(profileId)) { if (!isQuestKey(id)) continue; const at = entryAt(profileId, id) ?? ''; if (!last || Date.parse(at) > Date.parse(last.at)) last = { id, at }; }
   let ctx: { dofus: string; dofusId: string; name: string; next?: string } | null = null;
   // Une même quête sert à plusieurs Dofus : on préfère le dernier Dofus ouvert.
   const lastDofus = ls.get('fzth:v2:lastDofus', '');

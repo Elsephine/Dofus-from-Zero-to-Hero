@@ -163,6 +163,6 @@ const siteQuestIds = () => {
 export function questCount(p: number, base: number | undefined, baseAt: string | undefined, done: string[], at: (id: string) => string | undefined) {
   if (base === undefined) return null;
   const ids = siteQuestIds();
-  const added = done.filter(id => (ids.has(id) || id.startsWith('align:')) && (at(id) ?? '') > (baseAt ?? '')).length;
+  const added = done.filter(id => (ids.has(id) || id.startsWith('align:')) && Date.parse(at(id) ?? '') > (Date.parse(baseAt ?? '') || 0)).length;
   return { base, added, total: base + added };
 }
