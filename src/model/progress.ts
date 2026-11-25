@@ -148,16 +148,29 @@ const LS_HISTORY = 'fzth:v2:history';
 let history: HistoryEntry[] = readLS(LS_HISTORY, []);
 export const getHistory = (profile: number) => history.filter(h => h.profile === profile);
 
+/** Identifiants équivalents (même quête à deux endroits, ex. Alignement et Dofus Ivoire) : cochés/décochés ensemble. */
+const links = new Map<string, string[]>();
+export function linkIds(ids: string[]) {
+  const all = [...new Set(ids.flatMap(i => links.get(i) ?? [i]))]; if (all.length < 2) return;
+  for (const i of all) links.set(i, all);
+}
+const doneRaw = (profile: number, id: string) => !!entries.get(key(profile, id))?.done;
+
 export function toggle(profile: number, id: string, done?: boolean, opts: { silent?: boolean } = {}) {
   const k = key(profile, id);
   const cur = entries.get(k);
-  const next = done ?? !cur?.done;
-  if (done !== undefined && cur && cur.done === next) return; // déjà dans cet état
+  const was = isDone(profile, id);
+  const next = done ?? !was;
+  if (done !== undefined && was === next && (cur?.done ?? false) === next) return; // déjà dans cet état
   const at = new Date().toISOString();
-  entries.set(k, { done: next, at, ...(cur?.qty !== undefined ? { qty: cur.qty } : {}) });
-  pending.add(k);
+  for (const other of links.get(id) ?? [id]) {
+    const ok = key(profile, other); const c = entries.get(ok);
+    if (other !== id && (c?.done ?? false) === next) continue;
+    entries.set(ok, { done: next, at, ...(c?.qty !== undefined ? { qty: c.qty } : {}) });
+    pending.add(ok);
+  }
   if (!opts.silent && !id.startsWith('choice:')) {
-    history = [{ at, profile, id, done: next, prev: !!cur?.done }, ...history].slice(0, 150);
+    history = [{ at, profile, id, done: next, prev: was }, ...history].slice(0, 150);
     writeLS(LS_HISTORY, history);
   }
   save(); emit();
@@ -199,7 +212,10 @@ export function setQty(profile: number, id: string, qty: number, need: number) {
 let qtyTimer: ReturnType<typeof setTimeout> | null = null;
 export const qtyOf = (profile: number, id: string) => entries.get(key(profile, id))?.qty;
 
-export function isDone(profile: number, id: string) { return !!entries.get(key(profile, id))?.done; }
+export function isDone(profile: number, id: string) {
+  if (doneRaw(profile, id)) return true;
+  const l = links.get(id); return !!l && l.some(o => o !== id && doneRaw(profile, o));
+}
 
 export function useProgress() {
   const v = useSyncExternalStore(cb => { listeners.add(cb); return () => listeners.delete(cb); }, () => version);

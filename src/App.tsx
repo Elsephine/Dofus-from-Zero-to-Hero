@@ -3,7 +3,7 @@ import { ItemImg } from './ui/ItemImg';
 import { GiftPopup } from './Gifts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Bell as BellIcon, CalendarDays, Castle, Egg, Hammer, History, MessageCircle, Moon, Sparkles, Sun, Trophy, Users, Wrench, Shirt, AlarmClock, Lightbulb, Lock, Download, Share, Upload, KeyRound, Save, Check, Swords, Skull, Clock4, Handshake, RotateCcw, TrendingUp, Coins, Package, PictureInPicture2, Link2, Info, ListOrdered, Repeat, ScrollText, ArrowRight, Target } from 'lucide-react';
-import { repeatables } from './data/jeu/quetes';
+import { bontaQuests, repeatables } from './data/jeu/quetes';
 import { favKey, repKey, repTodo } from './model/repeat';
 import { isDone as isDoneP } from './model/progress';
 import { cachedRange, fetchRange, parisToday } from './model/almanax';
@@ -16,7 +16,7 @@ import { EggRing, eggColor } from './ui/EggRing';
 import { burst, celebrateDofus, closeTrophy, useTrophy } from './model/celebrate';
 import { catalog, idAliases, type DofusView, type ItemView } from './model/catalog';
 import { profiles } from './model/profiles';
-import { approveReset, askReset, exportProfile, finishReset, getHistory, hasCode, importProfile, isUnlocked, listResetRequests, login, logout, resetStatus, resetToken, setShare, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
+import { linkIds, approveReset, askReset, exportProfile, finishReset, getHistory, hasCode, importProfile, isUnlocked, listResetRequests, login, logout, resetStatus, resetToken, setShare, teamInfo, toggle, undo, useProgress, type SyncStatus } from './model/progress';
 import { labelOf, search } from './model/search';
 import { dofusInfo, type DofusInfo } from './data/tougli/dofus-info';
 import { resourceNeeds } from './model/resources';
@@ -36,7 +36,7 @@ import { CatchUp } from './CatchUp';
 import { AutoAchievements, CallButton, LastNote, NowCard, Roulette, SessionCard, SessionChip, SessionRecap, SessionWatcher } from './Session';
 const Quests = lazy(() => import('./Quests').then(m => ({ default: m.Quests })));
 const Achievements = lazy(() => import('./Achievements').then(m => ({ default: m.Achievements })));
-import { almostDone, achKey, achsForQuest, eventStatus, useAchData } from './model/achievements';
+import { almostDone, achKey, achsForQuest, eventStatus, questIds, useAchData } from './model/achievements';
 import { useDungeons } from './model/dungeonData';
 const Almanax = lazy(() => import('./Almanax').then(m => ({ default: m.Almanax })));
 const Team = lazy(() => import('./Team').then(m => ({ default: m.Team })));
@@ -45,6 +45,9 @@ const overlayMod = () => import('./Overlay');
 const openOverlay = (p: number, d?: string) => void overlayMod().then(m => m.openOverlay(p, d));
 import { CATS, catOf, dismissCat, enableBrowserNotifications, isMuted, markAllSeen, pushToasts, setMuted, useNotifications, watchNotifications } from './model/notifications';
 import { picksFor, setPick, viewFor } from './model/choices';
+
+// Quêtes d'alignement Bonta = mêmes quêtes que dans les Dofus (Ivoire…) : cochées d'un côté, cochées de l'autre.
+for (const q of bontaQuests) linkIds([`align:${q.id}`, ...questIds(q.n)]);
 
 const remember = <T,>(k: string, def: T): [T, (v: T) => void] => {
   const [v, setV] = useState<T>(() => { try { const r = localStorage.getItem(k); return r === null ? def : JSON.parse(r); } catch { return def; } });
