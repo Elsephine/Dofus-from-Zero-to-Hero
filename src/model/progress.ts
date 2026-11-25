@@ -116,7 +116,7 @@ async function doSync() {
       }
       if (items.length) await rpc('fzth_set', { p_profile: p, p_code: code, p_items: items });
       for (const [k, at] of sent) if (entries.get(k)?.at === at) pending.delete(k); // pas re-modifié pendant l'envoi
-      const rows = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_get', { p_profile: p, p_code: code });
+      const rows = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_get_all', { p_profile: p, p_code: code });
       for (const r of rows ?? []) {
         const k = key(r.profile_id, r.item_id);
         if (pending.has(k)) continue;
@@ -127,7 +127,7 @@ async function doSync() {
       const st = await rpc<{ profile_id: number; shared: boolean }[]>('fzth_team_status', { p_profile: p, p_code: code });
       team = Object.fromEntries((st ?? []).map(r => [r.profile_id, r.shared])); teamLoaded = true;
       for (const k of [...entries.keys()]) { const op = Number(k.split('|')[0]); if (!codes[op] && !team[op]) entries.delete(k); } // partage retiré
-      const others = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_team_get', { p_profile: p, p_code: code });
+      const others = await rpc<{ profile_id: number; item_id: string; done: boolean; updated_at: string; qty?: number | null }[]>('fzth_team_get_all', { p_profile: p, p_code: code });
       for (const r of others ?? []) {
         if (codes[r.profile_id]) continue; // personnage aussi déverrouillé ici : on garde sa propre synchro
         entries.set(key(r.profile_id, r.item_id), { done: r.done, at: new Date(r.updated_at).toISOString(), ...(r.qty != null ? { qty: r.qty } : {}) });
