@@ -7,7 +7,7 @@ export const profiles: Profile[] = [
   { id: 1, name: 'Volrod', image: 'volrod.webp', classe: 'Féca', world: 'feca', symbol: '◇' },
   { id: 2, name: 'Zepharyen', image: 'zepharyen.webp', classe: 'Éliotrope', world: 'elio', symbol: '◎' },
   { id: 3, name: 'Mysdibulles', image: 'mysdibulles.webp', classe: 'Steamer', world: 'steam', symbol: '⚙', team: false },
-  { id: 4, name: 'happy-kachu', image: 'happy-kachu.webp', classe: '', world: 'kachu', symbol: '⚡', team: false },
+  { id: 4, name: 'happy-kachu', image: 'happy-kachu.webp', classe: 'Iop', world: 'kachu', symbol: '⚡', team: false },
 ];
 
 /** Personnages comptés dans les besoins de l'équipe (les comptes à part en sont exclus). */

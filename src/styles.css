@@ -1578,3 +1578,8 @@ body[data-theme="dark"] .bell-menu, body[data-theme="dark"] .top .dd-menu { back
 .job-levels.compact .jl-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
 .job-levels.compact .jl-lvl input { font-size: 20px; width: 60px; }
 @media (max-width: 600px) { .jl-grid, .job-levels.compact .jl-grid { grid-template-columns: repeat(2, 1fr); } }
+/* Cartes de personnage homogènes : nom sur une ligne, même hauteur de plaque, rangée centrée. */
+.plate { width: calc(100% - 16px); box-sizing: border-box; padding: 6px 10px; }
+.portrait .plate strong, .plate strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-size: 20px !important; letter-spacing: 0; }
+@media (max-width: 600px) { .portrait .plate strong { font-size: 24px !important; } }
+.team { justify-content: center; grid-template-columns: repeat(auto-fit, minmax(170px, 210px)); }
