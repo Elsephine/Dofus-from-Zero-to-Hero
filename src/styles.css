@@ -22,6 +22,7 @@ body[data-world="sram"] { --perso: #7d5fd0; }
 body[data-world="feca"] { --perso: #22999e; }
 body[data-world="elio"] { --perso: #e07a2e; }
 body[data-world="steam"] { --perso: #c2508c; }
+body[data-world="kachu"] { --perso: #d9a400; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -576,6 +577,7 @@ body.pip { margin: 0; }
 [data-world="feca"] > i, i[data-world="feca"] { background: #7bd7d7 !important; }
 [data-world="elio"] > i, i[data-world="elio"] { background: #ffb67b !important; }
 [data-world="steam"] > i, i[data-world="steam"] { background: #f0a6cf !important; }
+[data-world="kachu"] > i, i[data-world="kachu"] { background: #ffe066 !important; }
 .legend .all i { background: var(--gold) !important; }
 .member.online .on-av i, .online-now .on-av i { background: #4ade80 !important; }
 
@@ -676,7 +678,7 @@ h2, .home h2 { color: var(--world-accent); }
 /* Bandeau équipe */
 .team-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
 .ts-card { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); overflow: hidden; }
-.ts-card[data-world="sram"] { --perso: #7d5fd0; } .ts-card[data-world="feca"] { --perso: #22999e; } .ts-card[data-world="elio"] { --perso: #e07a2e; } .ts-card[data-world="steam"] { --perso: #c2508c; }
+.ts-card[data-world="sram"] { --perso: #7d5fd0; } .ts-card[data-world="feca"] { --perso: #22999e; } .ts-card[data-world="elio"] { --perso: #e07a2e; } .ts-card[data-world="steam"] { --perso: #c2508c; } .ts-card[data-world="kachu"] { --perso: #d9a400; }
 .ts-card::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--perso); }
 .ts-card.me { border-color: var(--world-accent); box-shadow: 0 0 0 1px var(--world-accent), 0 4px 14px var(--world-glow); }
 .ts-card img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; border: 2px solid var(--perso); flex: none; }
@@ -743,7 +745,7 @@ input[type="checkbox"] { width: 18px; height: 18px; }
 /* Classement */
 .podium { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .pod { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel2); text-align: center; }
-.pod[data-world="sram"] { --perso: #7d5fd0; } .pod[data-world="feca"] { --perso: #22999e; } .pod[data-world="elio"] { --perso: #e07a2e; } .pod[data-world="steam"] { --perso: #c2508c; }
+.pod[data-world="sram"] { --perso: #7d5fd0; } .pod[data-world="feca"] { --perso: #22999e; } .pod[data-world="elio"] { --perso: #e07a2e; } .pod[data-world="steam"] { --perso: #c2508c; } .pod[data-world="kachu"] { --perso: #d9a400; }
 .pod.me { border-color: var(--world-accent); box-shadow: 0 4px 14px var(--world-glow); }
 .pod img { width: 74px; height: 74px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; border: 3px solid var(--perso); }
 .pod .medal { position: absolute; top: 6px; left: 10px; font-size: 26px; }
@@ -912,7 +914,7 @@ body[data-theme="dark"] { background-image: radial-gradient(ellipse at top, var(
 .cu-mates { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .cu-mate { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 30px; background: var(--panel); }
 .cu-mate.on { border-color: var(--world-accent); box-shadow: 0 0 0 1px var(--world-accent); }
-.cu-mate[data-world="sram"] { --perso: #7d5fd0; } .cu-mate[data-world="feca"] { --perso: #22999e; } .cu-mate[data-world="elio"] { --perso: #e07a2e; } .cu-mate[data-world="steam"] { --perso: #c2508c; }
+.cu-mate[data-world="sram"] { --perso: #7d5fd0; } .cu-mate[data-world="feca"] { --perso: #22999e; } .cu-mate[data-world="elio"] { --perso: #e07a2e; } .cu-mate[data-world="steam"] { --perso: #c2508c; } .cu-mate[data-world="kachu"] { --perso: #d9a400; }
 .cu-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; object-position: 50% 12%; border: 2px solid var(--world-accent); }
 .cu-mate .cu-av:last-of-type { border-color: var(--perso); }
 .cu-vs { display: flex; flex-direction: column; font-size: 11px; line-height: 1.3; }
@@ -1558,7 +1560,7 @@ body[data-theme="dark"] .bell-menu, body[data-theme="dark"] .top .dd-menu { back
 .job-lvl input[type=number] { width: 64px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--world-border); background: var(--panel2); color: var(--text); font-weight: 700; }
 .lvl-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 2px; border-radius: 999px; border: 1px solid var(--perso, var(--world-border)); font-weight: 700; font-size: 13px; }
 .lvl-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
-.lvl-chip[data-world="sram"] { --perso: #7d5fd0; } .lvl-chip[data-world="feca"] { --perso: #22999e; } .lvl-chip[data-world="elio"] { --perso: #e07a2e; } .lvl-chip[data-world="steam"] { --perso: #c2508c; }
+.lvl-chip[data-world="sram"] { --perso: #7d5fd0; } .lvl-chip[data-world="feca"] { --perso: #22999e; } .lvl-chip[data-world="elio"] { --perso: #e07a2e; } .lvl-chip[data-world="steam"] { --perso: #c2508c; } .lvl-chip[data-world="kachu"] { --perso: #d9a400; }
 
 /* Niveaux de métier (Aujourd'hui + Métiers) */
 .job-levels { padding: 12px 14px; margin-bottom: 12px; border: 1.5px solid var(--world-accent); }
